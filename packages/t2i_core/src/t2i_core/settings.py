@@ -23,6 +23,7 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
+    foundry_project_endpoint: HttpUrl | None = Field(default=None, alias="FOUNDRY_PROJECT_ENDPOINT")
     azure_openai_endpoint: HttpUrl = Field(alias="AZURE_OPENAI_ENDPOINT")
     azure_vision_endpoint: HttpUrl = Field(alias="AZURE_VISION_ENDPOINT")
 
@@ -63,6 +64,16 @@ class Settings(BaseSettings):
         """Azure OpenAI v1 base URL with exactly one slash before /openai/v1/."""
 
         return f"{str(self.azure_openai_endpoint).rstrip('/')}/openai/v1/"
+
+    @property
+    def foundry_services_endpoint(self) -> str:
+        """Azure AI Foundry services endpoint used by MAI APIs."""
+
+        if self.foundry_project_endpoint is not None:
+            project_endpoint = str(self.foundry_project_endpoint).rstrip("/")
+            return project_endpoint.split("/api/projects/", 1)[0]
+        openai_endpoint = str(self.azure_openai_endpoint).rstrip("/")
+        return openai_endpoint.replace(".openai.azure.com", ".services.ai.azure.com")
 
     @property
     def vision_endpoint(self) -> str:

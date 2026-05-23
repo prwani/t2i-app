@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-import httpx
 from azure.core.credentials import AccessToken
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+import httpx
 from openai import AsyncOpenAI
 
 from t2i_core.settings import Settings
@@ -26,11 +26,16 @@ def get_openai_client(
     settings: Settings,
     credential: DefaultAzureCredential | None = None,
 ) -> AsyncOpenAI:
-    """Build an AsyncOpenAI client for Azure OpenAI v1 endpoints."""
+    """Build an OpenAI v1 client for Azure OpenAI using Azure AD token refresh."""
+
+    token_provider = get_openai_token_provider(settings, credential)
+
+    async def provide_token() -> str:
+        return token_provider()
 
     return AsyncOpenAI(
         base_url=settings.openai_base_url,
-        api_key=get_openai_token_provider(settings, credential),
+        api_key=provide_token,
     )
 
 

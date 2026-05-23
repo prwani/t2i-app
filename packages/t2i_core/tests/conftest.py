@@ -11,6 +11,7 @@ def settings() -> Settings:
     return Settings(
         AZURE_OPENAI_ENDPOINT="https://example-openai.openai.azure.com/",
         AZURE_VISION_ENDPOINT="https://example-vision.cognitiveservices.azure.com/",
+        _env_file=None,
     )
 
 

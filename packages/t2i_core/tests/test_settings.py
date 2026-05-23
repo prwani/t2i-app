@@ -22,7 +22,7 @@ def test_settings_normalizes_urls(settings: Settings) -> None:
 
 def test_settings_requires_endpoints() -> None:
     with pytest.raises(ValidationError):
-        Settings()
+        Settings(_env_file=None)
 
 
 def test_scope_must_end_with_default() -> None:
@@ -31,6 +31,7 @@ def test_scope_must_end_with_default() -> None:
             AZURE_OPENAI_ENDPOINT="https://example-openai.openai.azure.com/",
             AZURE_VISION_ENDPOINT="https://example-vision.cognitiveservices.azure.com/",
             AZURE_OPENAI_SCOPE="https://ai.azure.com",
+            _env_file=None,
         )
 
 

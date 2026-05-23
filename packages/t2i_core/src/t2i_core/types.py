@@ -65,6 +65,14 @@ class EmbeddingScore(BaseModel):
         return value
 
 
+class Attribute(BaseModel):
+    """Atomic visual attribute extracted from a prompt."""
+
+    category: str
+    description: str
+    question: str
+
+
 class AttributeResult(BaseModel):
     """Rubric result for one prompt attribute."""
 
