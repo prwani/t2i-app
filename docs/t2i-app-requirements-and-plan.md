@@ -392,7 +392,7 @@ token = DefaultAzureCredential().get_token("https://ai.azure.com/.default").toke
 ### 4.4 Azure AI Vision — Multimodal Embeddings (for Layer 1 evaluation)
 
 - **Model version**: 2023-04-15 (multilingual, 102 languages)
-- **Capability**: Shared text-image embedding space (Florence-based, 1024-dim vectors)
+- **Capability**: Azure AI Vision shared text-image embedding space (1024-dim vectors)
 
 **API — Vectorize Text:**
 ```http
@@ -754,7 +754,7 @@ from t2i_core.evaluation import (
 )
 ```
 
-#### 5.3.1 EmbeddingEvaluator (Layer 1 — SigLIP-style)
+#### 5.3.1 EmbeddingEvaluator (Layer 1 — Semantic Embedding)
 
 **What it measures**: Overall semantic alignment — "is it in the right ballpark?"
 
@@ -782,7 +782,7 @@ class EmbeddingEvaluator:
 **Default threshold**: < 0.50 = significant semantic misalignment. This is configurable in `EvaluationThresholds` and in the Streamlit UI.
 **Long prompts**: Azure AI Vision text vectorization accepts 1–70 words. If the prompt is longer, summarize it into a concise visual description before vectorization and store that summary in `EmbeddingScore.vectorized_text`.
 
-#### 5.3.2 RubricEvaluator (Layer 2 — Gecko-style)
+#### 5.3.2 RubricEvaluator (Layer 2 — Prompt Rubric)
 
 **What it measures**: Factual completeness — "did the image include everything the prompt asked for?"
 
@@ -1176,7 +1176,7 @@ description: |
   USE FOR: "create design assets", "brand images for my UI", "hero image for landing page",
   "social media package", "generate and pick the best", "production-ready visuals".
   DO NOT USE FOR: evaluation only (use t2i-evaluation), generation only (use t2i-generation),
-  or UI code review (use frontend-design-review).
+  or UI code review.
 ---
 ```
 
@@ -1189,7 +1189,7 @@ description: |
    - **Brand-consistent suite**: brand template → generate variations → evaluate → rank
    - **Animated hero**: generate image → image-to-video → download
 3. How this skill relates to `t2i-generation` and `t2i-evaluation` (it chains them)
-4. How this complements `frontend-design-review` (that skill reviews UI code; this creates visual assets)
+4. How this complements UI code review workflows without replacing them
 
 **`scripts/create_assets.py`** — CLI entry point:
 ```bash
@@ -1332,11 +1332,9 @@ python create_assets.py --workflow social_package --prompt "..." \
 **Research Area 1: Alternative Video Models**
 
 Because Sora access, pricing, regions, and preview semantics can change, evaluate:
-- Runway Gen-4 / Gen-4 Turbo — Azure Foundry availability
-- Stability AI (Stable Video Diffusion) — Foundry model catalog
-- Microsoft MAI-Video (if announced)
-- Pika, Kling, Vidu — monitor Foundry availability
-- Open-source: CogVideoX, Mochi — Azure ML self-hosting
+- Other Azure Foundry video deployments available in the target tenant
+- Managed Azure-hosted video generation options
+- Self-hosted video generation options on Azure ML when managed deployments are unavailable
 
 **Deliverable**: Model comparison matrix + recommendation.
 
@@ -1351,7 +1349,7 @@ Dimensions not covered by the image pipeline:
 **Approaches to evaluate:**
 1. Frame sampling + existing image pipeline + temporal consistency layer
 2. Video-native vision LLMs (GPT-5.x with video understanding)
-3. Specialized metrics: FVD, CLIP-FVD, VBench
+3. Specialized video-quality metrics selected after research
 
 **Deliverable**: Video evaluation design document.
 
@@ -1370,7 +1368,7 @@ Dimensions not covered by the image pipeline:
 | microsoft/skills format | SKILL.md + references/ + scripts/ | Standard format any coding agent recognizes; compatible with microsoft/skills repo |
 | Local package, no PyPI initially | `pip install -e packages/t2i_core` | Development and public skills repo work without a publishing pipeline |
 | Azure AD auth only by default | `DefaultAzureCredential` for OpenAI/Foundry and Vision | Avoids secrets in `.env`; supports local `az login`, managed identity, and workload identity |
-| Complements frontend-design-review | Different scope — visual assets vs UI code | A frontend agent uses both: our skills for images, frontend-design-review for code quality |
+| Complements UI code review | Different scope — visual assets vs UI code | A frontend agent can use both asset generation and UI code review workflows |
 | Different models per eval layer | o4-mini for Layer 2, GPT-5.4 for Layer 3 | Binary QA doesn't need frontier reasoning; aesthetic judgment does. ~50% cost savings |
 | Batch QA in Layer 2 | Single LLM call per image, not one per attribute | 5-10x faster and cheaper |
 | Layer 3 excludes prompt adherence | No overlap with Layer 2 | Layer 2 already covers factual completeness; Layer 3 focuses on quality/aesthetics |
