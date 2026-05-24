@@ -1,9 +1,11 @@
 # SDK
 
-The SDK lives in `packages/t2i_core` and is installed locally with:
+The SDK lives in `packages/t2i_core` and requires Python 3.11+. Install it locally with:
 
 ```bash
-pip install -e "packages/t2i_core[dev,app]"
+uv venv --python 3.11 .venv
+source .venv/bin/activate
+uv pip install -e "packages/t2i_core[dev,app]"
 ```
 
 ## Public surfaces

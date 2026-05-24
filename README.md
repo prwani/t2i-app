@@ -6,12 +6,12 @@ The current implementation focuses on image workflows. Video generation is inten
 
 ## Get started locally
 
-Create a Python environment, install the SDK with app dependencies, and copy the environment template:
+Create a Python 3.11 environment, install the SDK with app dependencies, and copy the environment template:
 
 ```bash
-python3 -m venv .venv
+uv venv --python 3.11 .venv
 source .venv/bin/activate
-pip install -e "packages/t2i_core[dev,app]"
+uv pip install -e "packages/t2i_core[dev,app]"
 cp .env.example .env
 ```
 

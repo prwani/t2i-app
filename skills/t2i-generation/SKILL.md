@@ -18,9 +18,9 @@ Use this skill to generate and edit images with the local `t2i_core` SDK. Video 
 From the repository root:
 
 ```bash
-python3 -m venv .venv
+uv venv --python 3.11 .venv
 source .venv/bin/activate
-pip install -e "packages/t2i_core[app]"
+uv pip install -e "packages/t2i_core[app]"
 az login
 cp .env.example .env
 ```
