@@ -11,7 +11,7 @@ streamlit run app/Home.py
 ## Pages
 
 - Home
-- Image Generate: text generation, brand template, text rendering, aspect-ratio package, multi-image composition, inpainting, product placement, and multi-turn refinement
+- Image Generate: text-to-image generation, brand template, text rendering, aspect-ratio package, multi-image composition, inpainting, product placement, and multi-turn refinement
 - Evaluate
 - Compare
 - Batch Rank

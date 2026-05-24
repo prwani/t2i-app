@@ -6,7 +6,7 @@ Image scenarios live under `t2i_core.scenarios`. They are thin orchestration hel
 
 | Scenario | Function | Provider |
 | --- | --- | --- |
-| Text generation | Provider `generate()` | GPT image or MAI image |
+| Text-to-image generation | Provider `generate()` | GPT image or MAI image |
 | Brand template | `generate_brand_asset()` | GPT image or MAI image |
 | Text rendering | `generate_text_rendering()` | GPT image preferred |
 | Aspect ratio adaptation | `adapt_aspect_ratios()` | GPT image or MAI image |

@@ -17,7 +17,7 @@ from services import (
 
 
 SCENARIOS = [
-    "Text generation",
+    "Text-to-image generation",
     "Brand template",
     "Text rendering",
     "Aspect-ratio package",
@@ -33,7 +33,7 @@ GPT_ONLY_SCENARIOS = {
     "Multi-turn refinement",
 }
 EXAMPLE_PROMPTS = {
-    "Text generation": {
+    "Text-to-image generation": {
         "Example prompt 1": "A dog sitting at Gateway of India and enjoying the sea view with many people in the background.",
         "Example prompt 2": "A futuristic electric scooter parked outside a modern glass office at sunrise.",
         "Example prompt 3": "A cozy reading nook with warm lighting, plants, and a cup of tea on a wooden table.",
@@ -301,7 +301,7 @@ assets_key = f"generated_assets::{scenario}"
 if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
     with st.status("Generating images...", expanded=True) as status:
         try:
-            if scenario == "Text generation":
+            if scenario == "Text-to-image generation":
                 assets = run_async(generate_images(prompt, model, size=size, quality=quality, n=count))
             elif scenario == "Brand template":
                 assets = run_async(
