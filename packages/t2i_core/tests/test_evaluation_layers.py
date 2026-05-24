@@ -6,6 +6,7 @@ import pytest
 from t2i_core.evaluation.config import EvalModelConfig
 from t2i_core.evaluation.decomposer import PromptDecomposer
 from t2i_core.evaluation.judge import LLMJudgeEvaluator
+from t2i_core.evaluation.openai_json import parse_json_object
 from t2i_core.evaluation.pipeline import EvaluationPipeline, compute_composite_score
 from t2i_core.evaluation.rubric import RubricEvaluator
 from t2i_core.types import Attribute, CriterionScore, EmbeddingScore, LLMJudgeScore, RubricScore
@@ -30,6 +31,14 @@ class FakeChatCompletions:
 class FakeClient:
     def __init__(self, payload):
         self.chat = SimpleNamespace(completions=FakeChatCompletions(payload))
+
+
+def test_parse_json_object_accepts_markdown_fence() -> None:
+    assert parse_json_object('```json\n{"ok": true}\n```') == {"ok": True}
+
+
+def test_parse_json_object_extracts_wrapped_object() -> None:
+    assert parse_json_object('Here is the JSON: {"results": []}') == {"results": []}
 
 
 @pytest.mark.asyncio

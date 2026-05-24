@@ -21,16 +21,19 @@ if st.button("Evaluate comparison", type="primary", disabled=not uploads or not 
     with st.status("Evaluating images...", expanded=True):
         for upload in uploads:
             st.write(f"Evaluating {upload.name}")
-            reports.append(
-                run_async(
-                    evaluate_image(
-                        upload.getvalue(),
-                        prompt,
-                        layers,  # type: ignore[arg-type]
-                        image_path=upload.name,
+            try:
+                reports.append(
+                    run_async(
+                        evaluate_image(
+                            upload.getvalue(),
+                            prompt,
+                            layers,  # type: ignore[arg-type]
+                            image_path=upload.name,
+                        )
                     )
                 )
-            )
+            except Exception as exc:
+                st.error(f"Evaluation failed for {upload.name}: {exc}")
     st.session_state["compare_reports"] = reports
 
 for report in st.session_state.get("compare_reports", []):

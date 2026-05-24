@@ -21,16 +21,19 @@ if uploaded and prompt.strip():
 
 if st.button("Evaluate", type="primary", disabled=uploaded is None or not prompt.strip() or not layers):
     with st.status("Evaluating image...", expanded=True):
-        report = run_async(
-            evaluate_image(
-                uploaded.getvalue(),
-                prompt,
-                layers,  # type: ignore[arg-type]
-                image_path=uploaded.name,
+        try:
+            report = run_async(
+                evaluate_image(
+                    uploaded.getvalue(),
+                    prompt,
+                    layers,  # type: ignore[arg-type]
+                    image_path=uploaded.name,
+                )
             )
-        )
-        st.session_state["evaluation_report"] = report
-        st.write("Evaluation complete.")
+            st.session_state["evaluation_report"] = report
+            st.write("Evaluation complete.")
+        except Exception as exc:
+            st.error(f"Evaluation failed: {exc}")
 
 if "evaluation_report" in st.session_state:
     render_evaluation_report(st.session_state["evaluation_report"])

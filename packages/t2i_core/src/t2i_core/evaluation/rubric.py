@@ -15,7 +15,7 @@ from t2i_core.utils import encode_base64_image, validate_image_for_vision
 
 RUBRIC_INSTRUCTIONS = """You are a precise image evaluator. Answer each question about the image.
 Do not judge aesthetics; only verify whether requested prompt attributes are present.
-Respond in JSON with this shape:
+Respond with only a valid JSON object. Do not wrap it in markdown or prose. Use this shape:
 {"results":[{"answer":"yes|no|partial","confidence":0.0,"reasoning":"..."}]}"""
 
 
