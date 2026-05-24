@@ -32,6 +32,101 @@ GPT_ONLY_SCENARIOS = {
     "Product placement",
     "Multi-turn refinement",
 }
+EXAMPLE_PROMPTS = {
+    "Text generation": {
+        "Example prompt 1": "A dog sitting at Gateway of India and enjoying the sea view with many people in the background.",
+        "Example prompt 2": "A futuristic electric scooter parked outside a modern glass office at sunrise.",
+        "Example prompt 3": "A cozy reading nook with warm lighting, plants, and a cup of tea on a wooden table.",
+        "Example prompt 4": "A premium smartwatch product photo on a dark reflective surface with blue accent lighting.",
+        "Example prompt 5": "A cinematic mountain campsite under a starry sky with a glowing tent.",
+    },
+    "Brand template": {
+        "Example prompt 1": "Launch banner for a secure cloud backup product aimed at small businesses.",
+        "Example prompt 2": "Hero image for an AI productivity assistant that helps teams summarize meetings.",
+        "Example prompt 3": "Social post announcing a limited-time discount for a premium fitness app.",
+        "Example prompt 4": "Website header for a sustainable home cleaning brand.",
+        "Example prompt 5": "Product announcement visual for a developer observability dashboard.",
+    },
+    "Text rendering": {
+        "Example prompt 1": "Minimal conference poster with a bold headline and abstract blue gradients.",
+        "Example prompt 2": "Coffee shop sidewalk sign on a sunny street with warm natural light.",
+        "Example prompt 3": "Premium product label on a matte black bottle in a studio setup.",
+        "Example prompt 4": "Startup launch billboard in a clean modern city scene.",
+        "Example prompt 5": "Children's book cover with playful typography and cheerful illustration.",
+    },
+    "Aspect-ratio package": {
+        "Example prompt 1": "A polished SaaS product hero visual with floating dashboards and soft gradients.",
+        "Example prompt 2": "A luxury travel campaign image featuring a beach resort at golden hour.",
+        "Example prompt 3": "A modern hiring campaign visual for software engineers.",
+        "Example prompt 4": "A product marketing image for noise-cancelling headphones.",
+        "Example prompt 5": "A clean educational course banner about cloud security.",
+    },
+    "Multi-image composition": {
+        "Example prompt 1": "Combine the product photo with the background image into a realistic premium advertisement.",
+        "Example prompt 2": "Place the main object from the first image naturally into the scene from the second image.",
+        "Example prompt 3": "Create a cohesive campaign visual using all uploaded references with matching lighting.",
+        "Example prompt 4": "Blend the uploaded elements into a modern website hero image.",
+        "Example prompt 5": "Compose a social media ad using the product, background, and style reference images.",
+    },
+    "Inpainting": {
+        "Example prompt 1": "Replace the selected area with a clean white studio background.",
+        "Example prompt 2": "Change the object in the selected area to glossy emerald green.",
+        "Example prompt 3": "Remove the unwanted object and fill the area naturally.",
+        "Example prompt 4": "Add a premium gift box in the selected empty space.",
+        "Example prompt 5": "Turn the selected background into a warm sunset beach scene.",
+    },
+    "Product placement": {
+        "Example prompt 1": "Keep the product accurate and make it look naturally photographed in each environment.",
+        "Example prompt 2": "Create premium lifestyle product photography with realistic shadows and reflections.",
+        "Example prompt 3": "Show the product as the hero object with shallow depth of field.",
+        "Example prompt 4": "Make the product suitable for an ecommerce landing page campaign.",
+        "Example prompt 5": "Preserve product shape and branding while adapting lighting to each scene.",
+    },
+    "Multi-turn refinement": {
+        "Example prompt 1": "A premium product hero image of wireless earbuds on a reflective surface.",
+        "Example prompt 2": "A modern app launch visual with a smartphone mockup and abstract gradient background.",
+        "Example prompt 3": "A cozy cafe interior with a laptop on the table and morning light.",
+        "Example prompt 4": "A dramatic sports shoe advertisement on a dark studio floor.",
+        "Example prompt 5": "A clean corporate banner showing teamwork and cloud technology.",
+    },
+}
+EXAMPLE_EXTRAS = {
+    "Brand template": {
+        "Example prompt 1": {"colors": "#0078D4, #FFFFFF", "font_style": "modern sans-serif", "tone": "trustworthy", "logo_description": "blue shield icon"},
+        "Example prompt 2": {"colors": "#6B46C1, #F8FAFC", "font_style": "rounded modern", "tone": "helpful and efficient", "logo_description": "spark assistant mark"},
+        "Example prompt 3": {"colors": "#FF6B35, #111827", "font_style": "bold geometric", "tone": "energetic", "logo_description": "motion streak icon"},
+        "Example prompt 4": {"colors": "#2F855A, #FFF7ED", "font_style": "clean editorial", "tone": "natural and calm", "logo_description": "leaf wordmark"},
+        "Example prompt 5": {"colors": "#0F172A, #38BDF8", "font_style": "technical mono", "tone": "precise and confident", "logo_description": "signal graph mark"},
+    },
+    "Text rendering": {
+        "Example prompt 1": {"text": "AI SUMMIT 2026"},
+        "Example prompt 2": {"text": "FRESH BREW"},
+        "Example prompt 3": {"text": "NOVA"},
+        "Example prompt 4": {"text": "LAUNCH DAY"},
+        "Example prompt 5": {"text": "THE MOON GARDEN"},
+    },
+    "Aspect-ratio package": {
+        "Example prompt 1": {"formats": ["instagram_square", "linkedin_banner", "desktop_hero"]},
+        "Example prompt 2": {"formats": ["instagram_square", "instagram_story", "mobile_story"]},
+        "Example prompt 3": {"formats": ["linkedin_banner", "desktop_hero"]},
+        "Example prompt 4": {"formats": ["instagram_square", "instagram_story"]},
+        "Example prompt 5": {"formats": ["linkedin_banner", "desktop_hero", "mobile_story"]},
+    },
+    "Product placement": {
+        "Example prompt 1": {"environments": "on a marble kitchen counter\ninside a premium retail display\non a sunny outdoor patio"},
+        "Example prompt 2": {"environments": "on a wooden desk near a window\ninside a modern living room\non a hotel bedside table"},
+        "Example prompt 3": {"environments": "on a luxury store shelf\nin a minimalist studio setup\ninside a gift hamper"},
+        "Example prompt 4": {"environments": "on an ecommerce hero background\nin a lifestyle flat lay\non a clean white product pedestal"},
+        "Example prompt 5": {"environments": "in a warm cafe scene\non a travel packing table\nbeside a laptop in a workspace"},
+    },
+    "Multi-turn refinement": {
+        "Example prompt 1": {"refinements": "Make the lighting more dramatic\nAdd a subtle reflection on the floor\nMake the background darker"},
+        "Example prompt 2": {"refinements": "Make the phone screen glow\nAdd floating UI elements\nIncrease contrast and polish"},
+        "Example prompt 3": {"refinements": "Add more plants\nMake the morning light warmer\nAdd a notebook beside the laptop"},
+        "Example prompt 4": {"refinements": "Add motion blur accents\nMake the shoe color electric blue\nAdd rain droplets on the floor"},
+        "Example prompt 5": {"refinements": "Add subtle cloud icons\nMake the people more diverse\nUse a brighter optimistic color palette"},
+    },
+}
 
 
 def _uploaded_bytes(uploads) -> list[bytes]:
@@ -42,10 +137,27 @@ def _non_empty_lines(value: str) -> list[str]:
     return [line.strip() for line in value.splitlines() if line.strip()]
 
 
+def _example_value(scenario: str, selected_example: str) -> str:
+    if selected_example == "Custom":
+        return ""
+    return EXAMPLE_PROMPTS[scenario][selected_example]
+
+
+def _example_extra(scenario: str, selected_example: str, key: str, default):
+    if selected_example == "Custom":
+        return default
+    return EXAMPLE_EXTRAS.get(scenario, {}).get(selected_example, {}).get(key, default)
+
+
 st.title("Image Generate")
 
 with st.sidebar:
     scenario = st.selectbox("Scenario", SCENARIOS)
+    selected_example = st.selectbox(
+        "Example prompt",
+        ["Custom", *EXAMPLE_PROMPTS[scenario].keys()],
+        help="Choose an example to prefill the scenario inputs.",
+    )
     model_disabled = scenario in GPT_ONLY_SCENARIOS
     model = st.selectbox(
         "Model",
@@ -67,7 +179,12 @@ elif scenario == "Text rendering":
     prompt_label = "Visual context"
 elif scenario == "Product placement":
     prompt_label = "Optional placement guidance"
-prompt = st.text_area(prompt_label, height=120)
+prompt = st.text_area(
+    prompt_label,
+    value=_example_value(scenario, selected_example),
+    height=120,
+    key=f"prompt::{scenario}::{selected_example}",
+)
 
 colors: list[str] = []
 font_style = ""
@@ -81,18 +198,44 @@ environment_text = ""
 refinement_text = ""
 
 if scenario == "Brand template":
-    colors_text = st.text_input("Brand colors", value="#0078D4, #FFFFFF")
+    colors_text = st.text_input(
+        "Brand colors",
+        value=_example_extra(scenario, selected_example, "colors", "#0078D4, #FFFFFF"),
+        key=f"colors::{selected_example}",
+    )
     colors = [color.strip() for color in colors_text.split(",") if color.strip()]
-    font_style = st.text_input("Font style", value="modern sans-serif")
-    tone = st.text_input("Tone", value="professional")
-    logo_description = st.text_input("Logo description", value="")
+    font_style = st.text_input(
+        "Font style",
+        value=_example_extra(scenario, selected_example, "font_style", "modern sans-serif"),
+        key=f"font_style::{selected_example}",
+    )
+    tone = st.text_input(
+        "Tone",
+        value=_example_extra(scenario, selected_example, "tone", "professional"),
+        key=f"tone::{selected_example}",
+    )
+    logo_description = st.text_input(
+        "Logo description",
+        value=_example_extra(scenario, selected_example, "logo_description", ""),
+        key=f"logo::{selected_example}",
+    )
 elif scenario == "Text rendering":
-    text_to_render = st.text_input("Exact text to render")
+    text_to_render = st.text_input(
+        "Exact text to render",
+        value=_example_extra(scenario, selected_example, "text", ""),
+        key=f"text::{selected_example}",
+    )
 elif scenario == "Aspect-ratio package":
     formats = st.multiselect(
         "Target formats",
         ["instagram_square", "instagram_story", "linkedin_banner", "desktop_hero", "mobile_story"],
-        default=["instagram_square", "linkedin_banner"],
+        default=_example_extra(
+            scenario,
+            selected_example,
+            "formats",
+            ["instagram_square", "linkedin_banner"],
+        ),
+        key=f"formats::{selected_example}",
     )
 elif scenario == "Multi-image composition":
     source_uploads = st.file_uploader(
@@ -111,14 +254,26 @@ elif scenario == "Product placement":
     source_uploads = st.file_uploader("Product image", type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=False)
     environment_text = st.text_area(
         "Target environments (one per line)",
-        value="on a premium retail shelf\non a kitchen counter",
+        value=_example_extra(
+            scenario,
+            selected_example,
+            "environments",
+            "on a premium retail shelf\non a kitchen counter",
+        ),
         height=100,
+        key=f"environments::{selected_example}",
     )
 elif scenario == "Multi-turn refinement":
     refinement_text = st.text_area(
         "Refinement instructions (one per line)",
-        value="Make the lighting more dramatic\nAdd a subtle reflection on the floor",
+        value=_example_extra(
+            scenario,
+            selected_example,
+            "refinements",
+            "Make the lighting more dramatic\nAdd a subtle reflection on the floor",
+        ),
         height=120,
+        key=f"refinements::{selected_example}",
     )
 
 disabled_reason = ""
