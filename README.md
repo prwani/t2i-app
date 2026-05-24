@@ -1,37 +1,55 @@
 # T2I App
 
-Local monorepo for text-to-image generation and image evaluation on Azure Foundry.
+T2I App is an Azure Foundry image generation and evaluation project. It provides a Python SDK, agent skills, and a Streamlit UI for generating images with deployed image models, evaluating prompt adherence and quality, comparing outputs, and ranking generated variations.
 
-Video generation is intentionally deferred until Sora 2 access is available. The current SDK focuses on image providers, image-only scenarios, and the image evaluation pipeline.
+The current implementation focuses on image workflows. Video generation is intentionally deferred until video model access is available.
 
-## Local setup
+## Get started locally
+
+Create a Python environment, install the SDK with app dependencies, and copy the environment template:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e "packages/t2i_core[dev]"
-az login
+pip install -e "packages/t2i_core[dev,app]"
 cp .env.example .env
+```
+
+Update `.env` with your Azure Foundry, Azure OpenAI, Azure AI Vision, and deployment settings. Local authentication uses Azure AD:
+
+```bash
+az login
 pytest packages/t2i_core/tests
 ```
 
-Authentication uses Azure AD through `DefaultAzureCredential`; API keys are not required by default.
+Run the Streamlit UI:
 
-## Image SDK quick start
-
-```python
-from t2i_core import GPTImageProvider, Settings
-
-settings = Settings()
-provider = GPTImageProvider(settings)
-images = await provider.generate("A clean product hero image on a blue background")
+```bash
+streamlit run app/app.py
 ```
 
-Available image providers:
+## Get started with Azure deployment
 
-- `MAIImageProvider`: MAI-Image-2 / MAI-Image-2e text-to-image generation through the Foundry `/mai/v1/images/generations` API.
-- `GPTImageProvider`: GPT-Image-2 text-to-image generation plus editing, inpainting, and image composition.
+The app is container-ready for Azure Container Apps with Microsoft Entra ID authentication at ingress and managed identity for Azure Foundry/API access.
 
-Available image scenarios are in `t2i_core.scenarios`: brand templates, multi-image composition, multi-turn refinement, inpainting, product placement, batch variations, text rendering, and aspect-ratio adaptation.
+Build and deploy using the guidance in [Azure Container Apps deployment](docs/azure-container-apps.md). At a high level:
 
-Image evaluation supports standalone `EmbeddingEvaluator`, `RubricEvaluator`, and `LLMJudgeEvaluator`, plus `EvaluationPipeline` for selective or full-layer scoring.
+```bash
+az acr build --registry <acr-name> --image t2i-app:latest .
+az containerapp create --name t2i-app --image <acr-name>.azurecr.io/t2i-app:latest --target-port 8000 --ingress external
+```
+
+After deployment, enable Microsoft Entra authentication on the Container App and grant the managed identity the required Cognitive Services/Foundry roles.
+
+## Detailed documentation
+
+- [Azure Container Apps deployment](docs/azure-container-apps.md)
+- [Documentation index](docs/index.md)
+- [Architecture](docs/architecture.md)
+- [SDK](docs/sdk.md)
+- [Image scenarios](docs/scenarios.md)
+- [Evaluation pipeline](docs/evaluation.md)
+- [Streamlit app](docs/streamlit-app.md)
+- [Generation skill](skills/t2i-generation/SKILL.md)
+- [Evaluation skill](skills/t2i-evaluation/SKILL.md)
+- [Design assets skill](skills/t2i-design-assets/SKILL.md)
