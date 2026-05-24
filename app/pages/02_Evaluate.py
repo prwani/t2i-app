@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from components.evaluation_report import render_evaluation_report
+from components.evaluation_report import render_evaluation_report, render_evaluation_summary
 from services import evaluate_image, run_async
 
 
@@ -36,4 +36,6 @@ if st.button("Evaluate", type="primary", disabled=uploaded is None or not prompt
             st.error(f"Evaluation failed: {exc}")
 
 if "evaluation_report" in st.session_state:
-    render_evaluation_report(st.session_state["evaluation_report"])
+    report = st.session_state["evaluation_report"]
+    render_evaluation_summary([report])
+    render_evaluation_report(report)

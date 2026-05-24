@@ -21,6 +21,7 @@ class GeneratedAsset:
 
     name: str
     result: GenerationResult
+    evaluation: EvaluationReport | None = None
 
 
 def run_async(coro):
@@ -122,7 +123,11 @@ async def generate_and_rank(
             layers=layers,
         )
         return [
-            GeneratedAsset(name=f"rank-{item.rank}.png", result=item.generation)
+            GeneratedAsset(
+                name=f"rank-{item.rank}.png",
+                result=item.generation,
+                evaluation=item.evaluation,
+            )
             for item in ranked
         ]
     finally:

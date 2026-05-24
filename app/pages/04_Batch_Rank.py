@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from components.evaluation_report import render_evaluation_summary
 from components.image_gallery import render_gallery
 from services import generate_and_rank, run_async
 
@@ -27,4 +28,8 @@ if st.button("Generate and rank", type="primary", disabled=not prompt.strip() or
         st.session_state["ranked_assets"] = assets
         st.write("Ranking complete.")
 
-render_gallery(st.session_state.get("ranked_assets", []))
+ranked_assets = st.session_state.get("ranked_assets", [])
+ranked_reports = [asset.evaluation for asset in ranked_assets if asset.evaluation is not None]
+if ranked_reports:
+    render_evaluation_summary(ranked_reports)
+render_gallery(ranked_assets)
