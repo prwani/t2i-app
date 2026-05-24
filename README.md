@@ -25,7 +25,7 @@ pytest packages/t2i_core/tests
 Run the Streamlit UI:
 
 ```bash
-streamlit run app/app.py
+streamlit run app/Home.py
 ```
 
 ## Get started with Azure deployment

@@ -22,4 +22,4 @@ RUN pip install --no-cache-dir --upgrade pip \
 USER app
 EXPOSE 8000
 
-CMD ["streamlit", "run", "app/app.py", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "app/Home.py", "--server.address=0.0.0.0"]

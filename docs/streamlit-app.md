@@ -5,7 +5,7 @@ The Streamlit app lives in `app/` and provides an image-focused user interface.
 Run locally:
 
 ```bash
-streamlit run app/app.py
+streamlit run app/Home.py
 ```
 
 ## Pages
