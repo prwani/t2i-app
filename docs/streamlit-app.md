@@ -16,7 +16,7 @@ streamlit run app/Home.py
 - Compare
 - Batch Rank
 
-The Image Generate page provides per-scenario example prompts. Scenarios with additional inputs also prefill useful defaults, such as brand colors, exact text, aspect-ratio formats, product placement environments, and refinement instructions.
+The Image Generate page provides per-scenario example prompts. Scenarios with additional inputs also prefill useful defaults, such as brand colors, multi-line rendered text, aspect-ratio formats, product placement environments, and refinement instructions. Multi-image composition examples include generated local sample input images that users can try before uploading their own references.
 
 Generated-image galleries use an in-page large preview with Previous/Next controls, thumbnails, and a selected-image download button. This avoids relying on Streamlit's built-in image maximize overlay for multi-image navigation.
 

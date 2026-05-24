@@ -1,6 +1,9 @@
 """Image generation page."""
 
+from io import BytesIO
+
 import streamlit as st
+from PIL import Image, ImageDraw
 
 from components.image_gallery import render_gallery
 from services import (
@@ -48,11 +51,11 @@ EXAMPLE_PROMPTS = {
         "Example prompt 5": "Product announcement visual for a developer observability dashboard.",
     },
     "Text rendering": {
-        "Example prompt 1": "Minimal conference poster with a bold headline and abstract blue gradients.",
-        "Example prompt 2": "Coffee shop sidewalk sign on a sunny street with warm natural light.",
-        "Example prompt 3": "Premium product label on a matte black bottle in a studio setup.",
-        "Example prompt 4": "Startup launch billboard in a clean modern city scene.",
-        "Example prompt 5": "Children's book cover with playful typography and cheerful illustration.",
+        "Example prompt 1": "Minimal conference poster with multi-line typography, bold headline, smaller subtitle, and abstract blue gradients.",
+        "Example prompt 2": "Coffee shop sidewalk sign with large hand-lettered headline, medium menu line, and small footer text on a sunny street.",
+        "Example prompt 3": "Premium product label on a matte black bottle with large brand name, small tagline, and tiny flavor note.",
+        "Example prompt 4": "Startup launch billboard with oversized headline, secondary call-to-action, and small date line in a modern city scene.",
+        "Example prompt 5": "Children's book cover with playful title lettering, curved subtitle, and small author line.",
     },
     "Aspect-ratio package": {
         "Example prompt 1": "A polished SaaS product hero visual with floating dashboards and soft gradients.",
@@ -99,11 +102,11 @@ EXAMPLE_EXTRAS = {
         "Example prompt 5": {"colors": "#0F172A, #38BDF8", "font_style": "technical mono", "tone": "precise and confident", "logo_description": "signal graph mark"},
     },
     "Text rendering": {
-        "Example prompt 1": {"text": "AI SUMMIT 2026"},
-        "Example prompt 2": {"text": "FRESH BREW"},
-        "Example prompt 3": {"text": "NOVA"},
-        "Example prompt 4": {"text": "LAUNCH DAY"},
-        "Example prompt 5": {"text": "THE MOON GARDEN"},
+        "Example prompt 1": {"text": "AI SUMMIT 2026\nBUILD THE FUTURE\nMumbai - July 12"},
+        "Example prompt 2": {"text": "FRESH BREW\nOAT LATTE + COLD FOAM\nToday Only"},
+        "Example prompt 3": {"text": "NOVA\nBOTANICAL TONIC\nCitrus Mint"},
+        "Example prompt 4": {"text": "LAUNCH DAY\nJOIN THE WAITLIST\nJune 30"},
+        "Example prompt 5": {"text": "THE MOON GARDEN\nA bedtime adventure\nBy Mira Sen"},
     },
     "Aspect-ratio package": {
         "Example prompt 1": {"formats": ["instagram_square", "linkedin_banner", "desktop_hero"]},
@@ -147,6 +150,34 @@ def _example_extra(scenario: str, selected_example: str, key: str, default):
     if selected_example == "Custom":
         return default
     return EXAMPLE_EXTRAS.get(scenario, {}).get(selected_example, {}).get(key, default)
+
+
+def _sample_composition_images(selected_example: str) -> list[tuple[str, bytes]]:
+    """Create small local PNG sample inputs for composition examples."""
+
+    label = selected_example if selected_example != "Custom" else "Example prompt 1"
+    palettes = {
+        "Example prompt 1": [("#0F172A", "#38BDF8", "Product"), ("#F8FAFC", "#CBD5E1", "Studio")],
+        "Example prompt 2": [("#7C2D12", "#FDBA74", "Object"), ("#064E3B", "#A7F3D0", "Scene")],
+        "Example prompt 3": [("#581C87", "#D8B4FE", "Reference"), ("#1E3A8A", "#BFDBFE", "Lighting"), ("#111827", "#F9FAFB", "Style")],
+        "Example prompt 4": [("#172554", "#93C5FD", "UI"), ("#365314", "#BEF264", "Hero"), ("#7F1D1D", "#FECACA", "Accent")],
+        "Example prompt 5": [("#312E81", "#C4B5FD", "Product"), ("#713F12", "#FDE68A", "Background"), ("#164E63", "#A5F3FC", "Style")],
+    }
+    return [
+        (f"sample-{index}-{caption.lower()}.png", _sample_image_bytes(primary, secondary, caption))
+        for index, (primary, secondary, caption) in enumerate(palettes.get(label, palettes["Example prompt 1"]), start=1)
+    ]
+
+
+def _sample_image_bytes(primary: str, secondary: str, caption: str) -> bytes:
+    image = Image.new("RGB", (512, 512), color=secondary)
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((86, 120, 426, 392), radius=36, fill=primary)
+    draw.ellipse((190, 180, 322, 312), fill=secondary)
+    draw.text((40, 40), caption, fill=primary)
+    output = BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 st.title("Image Generate")
@@ -196,6 +227,7 @@ source_uploads = []
 mask_upload = None
 environment_text = ""
 refinement_text = ""
+composition_input_count = 0
 
 if scenario == "Brand template":
     colors_text = st.text_input(
@@ -220,9 +252,10 @@ if scenario == "Brand template":
         key=f"logo::{selected_example}",
     )
 elif scenario == "Text rendering":
-    text_to_render = st.text_input(
+    text_to_render = st.text_area(
         "Exact text to render",
         value=_example_extra(scenario, selected_example, "text", ""),
+        height=100,
         key=f"text::{selected_example}",
     )
 elif scenario == "Aspect-ratio package":
@@ -238,13 +271,26 @@ elif scenario == "Aspect-ratio package":
         key=f"formats::{selected_example}",
     )
 elif scenario == "Multi-image composition":
+    sample_inputs = _sample_composition_images(selected_example)
+    use_sample_inputs = st.checkbox(
+        "Use sample input images for this example",
+        value=selected_example != "Custom",
+        disabled=selected_example == "Custom",
+    )
+    if use_sample_inputs:
+        st.caption("Sample inputs")
+        sample_columns = st.columns(len(sample_inputs))
+        for column, (name, image_bytes) in zip(sample_columns, sample_inputs, strict=True):
+            with column:
+                st.image(image_bytes, use_container_width=True)
+                st.caption(name)
     source_uploads = st.file_uploader(
-        "Source images (2-16)",
+        "Or upload source images (2-16)",
         type=["png", "jpg", "jpeg", "webp"],
         accept_multiple_files=True,
     )
-    upload_count = len(source_uploads or [])
-    if upload_count and not 2 <= upload_count <= 16:
+    composition_input_count = len(sample_inputs) if use_sample_inputs else len(source_uploads or [])
+    if composition_input_count and not 2 <= composition_input_count <= 16:
         st.warning("Multi-image composition requires 2 to 16 source images.")
 elif scenario == "Inpainting":
     st.info("Optional mask must be a PNG with alpha transparency. Transparent areas are edited.")
@@ -285,7 +331,7 @@ elif scenario == "Text rendering" and not text_to_render.strip():
     disabled_reason = "Provide exact text to render."
 elif scenario == "Aspect-ratio package" and not formats:
     disabled_reason = "Select at least one target format."
-elif scenario == "Multi-image composition" and not 2 <= len(source_uploads or []) <= 16:
+elif scenario == "Multi-image composition" and not 2 <= composition_input_count <= 16:
     disabled_reason = "Upload 2 to 16 source images."
 elif scenario == "Inpainting" and source_uploads is None:
     disabled_reason = "Upload a source image."
@@ -331,9 +377,14 @@ if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
             elif scenario == "Aspect-ratio package":
                 assets = run_async(generate_aspect_package(prompt, model, formats, quality=quality))
             elif scenario == "Multi-image composition":
+                composition_images = (
+                    [image_bytes for _, image_bytes in sample_inputs]
+                    if use_sample_inputs
+                    else _uploaded_bytes(source_uploads)
+                )
                 assets = run_async(
                     compose_uploaded_images(
-                        _uploaded_bytes(source_uploads),
+                        composition_images,
                         prompt,
                         size=size,
                         quality=quality,
