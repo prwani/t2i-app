@@ -154,6 +154,20 @@ def _example_extra(scenario: str, selected_example: str, key: str, default):
 def _sample_composition_images(selected_example: str) -> list[tuple[str, bytes]]:
     """Load GPT-generated local PNG sample inputs for composition examples."""
 
+    sample_dir = _sample_asset_dir("composition", selected_example)
+    return [(path.name, path.read_bytes()) for path in sorted(sample_dir.glob("*.png"))]
+
+
+def _sample_inpainting_assets(selected_example: str) -> tuple[bytes, bytes]:
+    sample_dir = _sample_asset_dir("inpainting", selected_example)
+    return (sample_dir / "source.png").read_bytes(), (sample_dir / "mask.png").read_bytes()
+
+
+def _sample_product_image(selected_example: str) -> bytes:
+    return (_sample_asset_dir("product-placement", selected_example) / "product.png").read_bytes()
+
+
+def _sample_asset_dir(scenario_slug: str, selected_example: str) -> Path:
     label = selected_example if selected_example != "Custom" else "Example prompt 1"
     sample_dirs = {
         "Example prompt 1": "example-1",
@@ -162,8 +176,7 @@ def _sample_composition_images(selected_example: str) -> list[tuple[str, bytes]]
         "Example prompt 4": "example-4",
         "Example prompt 5": "example-5",
     }
-    sample_dir = Path(__file__).resolve().parents[1] / "sample_assets" / "composition" / sample_dirs[label]
-    return [(path.name, path.read_bytes()) for path in sorted(sample_dir.glob("*.png"))]
+    return Path(__file__).resolve().parents[1] / "sample_assets" / scenario_slug / sample_dirs[label]
 
 
 st.title("Image Generate")
@@ -214,6 +227,11 @@ mask_upload = None
 environment_text = ""
 refinement_text = ""
 composition_input_count = 0
+use_sample_inpainting = False
+use_sample_product = False
+sample_inpainting_source: bytes | None = None
+sample_inpainting_mask: bytes | None = None
+sample_product_image: bytes | None = None
 
 if scenario == "Brand template":
     colors_text = st.text_input(
@@ -280,9 +298,32 @@ elif scenario == "Multi-image composition":
         st.warning("Multi-image composition requires 2 to 16 source images.")
 elif scenario == "Inpainting":
     st.info("Optional mask must be a PNG with alpha transparency. Transparent areas are edited.")
+    use_sample_inpainting = st.checkbox(
+        "Use sample source image and mask for this example",
+        value=selected_example != "Custom",
+        disabled=selected_example == "Custom",
+    )
+    if use_sample_inpainting:
+        sample_inpainting_source, sample_inpainting_mask = _sample_inpainting_assets(selected_example)
+        source_column, mask_column = st.columns(2)
+        with source_column:
+            st.image(sample_inpainting_source, use_container_width=True)
+            st.caption("sample source.png")
+        with mask_column:
+            st.image(sample_inpainting_mask, use_container_width=True)
+            st.caption("sample mask.png")
     source_uploads = st.file_uploader("Source image", type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=False)
     mask_upload = st.file_uploader("Optional alpha mask", type=["png"], accept_multiple_files=False)
 elif scenario == "Product placement":
+    use_sample_product = st.checkbox(
+        "Use sample product image for this example",
+        value=selected_example != "Custom",
+        disabled=selected_example == "Custom",
+    )
+    if use_sample_product:
+        sample_product_image = _sample_product_image(selected_example)
+        st.image(sample_product_image, width=280)
+        st.caption("sample product.png")
     source_uploads = st.file_uploader("Product image", type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=False)
     environment_text = st.text_area(
         "Target environments (one per line)",
@@ -319,9 +360,11 @@ elif scenario == "Aspect-ratio package" and not formats:
     disabled_reason = "Select at least one target format."
 elif scenario == "Multi-image composition" and not 2 <= composition_input_count <= 16:
     disabled_reason = "Upload 2 to 16 source images."
-elif scenario == "Inpainting" and source_uploads is None:
+elif scenario == "Inpainting" and source_uploads is None and not use_sample_inpainting:
     disabled_reason = "Upload a source image."
-elif scenario == "Product placement" and (source_uploads is None or not _non_empty_lines(environment_text)):
+elif scenario == "Product placement" and (
+    (source_uploads is None and not use_sample_product) or not _non_empty_lines(environment_text)
+):
     disabled_reason = "Upload a product image and provide at least one environment."
 elif scenario == "Multi-turn refinement" and not _non_empty_lines(refinement_text):
     disabled_reason = "Provide at least one refinement instruction."
@@ -377,19 +420,26 @@ if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
                     )
                 )
             elif scenario == "Inpainting":
+                source_image = sample_inpainting_source if use_sample_inpainting else source_uploads.getvalue()
+                mask_image = (
+                    sample_inpainting_mask
+                    if use_sample_inpainting
+                    else mask_upload.getvalue() if mask_upload else None
+                )
                 assets = run_async(
                     inpaint_uploaded_image(
-                        source_uploads.getvalue(),
+                        source_image,
                         prompt,
-                        mask=mask_upload.getvalue() if mask_upload else None,
+                        mask=mask_image,
                         size=size,
                         quality=quality,
                     )
                 )
             elif scenario == "Product placement":
+                product_image = sample_product_image if use_sample_product else source_uploads.getvalue()
                 assets = run_async(
                     place_product_assets(
-                        source_uploads.getvalue(),
+                        product_image,
                         _non_empty_lines(environment_text),
                         size=size,
                         quality=quality,
