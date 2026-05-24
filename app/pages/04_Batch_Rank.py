@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from app.components.image_gallery import render_gallery
-from app.services import generate_and_rank, run_async
+from components.image_gallery import render_gallery
+from services import generate_and_rank, run_async
 
 
 st.title("Batch Rank")

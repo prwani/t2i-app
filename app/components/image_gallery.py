@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from app.services import GeneratedAsset
+from services import GeneratedAsset
 
 
 def render_gallery(assets: list[GeneratedAsset]) -> None:

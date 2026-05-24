@@ -2,8 +2,8 @@
 
 import streamlit as st
 
-from app.components.evaluation_report import render_evaluation_report
-from app.services import evaluate_image, run_async
+from components.evaluation_report import render_evaluation_report
+from services import evaluate_image, run_async
 
 
 st.title("Evaluate")
