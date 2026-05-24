@@ -1,9 +1,8 @@
 """Image generation page."""
 
-from io import BytesIO
+from pathlib import Path
 
 import streamlit as st
-from PIL import Image, ImageDraw
 
 from components.image_gallery import render_gallery
 from services import (
@@ -153,31 +152,18 @@ def _example_extra(scenario: str, selected_example: str, key: str, default):
 
 
 def _sample_composition_images(selected_example: str) -> list[tuple[str, bytes]]:
-    """Create small local PNG sample inputs for composition examples."""
+    """Load GPT-generated local PNG sample inputs for composition examples."""
 
     label = selected_example if selected_example != "Custom" else "Example prompt 1"
-    palettes = {
-        "Example prompt 1": [("#0F172A", "#38BDF8", "Product"), ("#F8FAFC", "#CBD5E1", "Studio")],
-        "Example prompt 2": [("#7C2D12", "#FDBA74", "Object"), ("#064E3B", "#A7F3D0", "Scene")],
-        "Example prompt 3": [("#581C87", "#D8B4FE", "Reference"), ("#1E3A8A", "#BFDBFE", "Lighting"), ("#111827", "#F9FAFB", "Style")],
-        "Example prompt 4": [("#172554", "#93C5FD", "UI"), ("#365314", "#BEF264", "Hero"), ("#7F1D1D", "#FECACA", "Accent")],
-        "Example prompt 5": [("#312E81", "#C4B5FD", "Product"), ("#713F12", "#FDE68A", "Background"), ("#164E63", "#A5F3FC", "Style")],
+    sample_dirs = {
+        "Example prompt 1": "example-1",
+        "Example prompt 2": "example-2",
+        "Example prompt 3": "example-3",
+        "Example prompt 4": "example-4",
+        "Example prompt 5": "example-5",
     }
-    return [
-        (f"sample-{index}-{caption.lower()}.png", _sample_image_bytes(primary, secondary, caption))
-        for index, (primary, secondary, caption) in enumerate(palettes.get(label, palettes["Example prompt 1"]), start=1)
-    ]
-
-
-def _sample_image_bytes(primary: str, secondary: str, caption: str) -> bytes:
-    image = Image.new("RGB", (512, 512), color=secondary)
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((86, 120, 426, 392), radius=36, fill=primary)
-    draw.ellipse((190, 180, 322, 312), fill=secondary)
-    draw.text((40, 40), caption, fill=primary)
-    output = BytesIO()
-    image.save(output, format="PNG")
-    return output.getvalue()
+    sample_dir = Path(__file__).resolve().parents[1] / "sample_assets" / "composition" / sample_dirs[label]
+    return [(path.name, path.read_bytes()) for path in sorted(sample_dir.glob("*.png"))]
 
 
 st.title("Image Generate")
