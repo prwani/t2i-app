@@ -11,10 +11,12 @@ streamlit run app/Home.py
 ## Pages
 
 - Home
-- Image Generate
+- Image Generate: text generation, brand template, text rendering, aspect-ratio package, multi-image composition, inpainting, product placement, and multi-turn refinement
 - Evaluate
 - Compare
 - Batch Rank
+
+Generated-image galleries use an in-page large preview with Previous/Next controls, thumbnails, and a selected-image download button. This avoids relying on Streamlit's built-in image maximize overlay for multi-image navigation.
 
 ## Authentication model
 

@@ -7,8 +7,18 @@ from typing import Literal
 
 from t2i_core import EvaluationPipeline, GPTImageProvider, MAIImageProvider, Settings
 from t2i_core.providers.base import ImageProvider
-from t2i_core.scenarios import adapt_aspect_ratios, generate_ranked_variations
-from t2i_core.types import EvaluationReport, GenerationResult
+from t2i_core.scenarios import (
+    BrandTemplate,
+    adapt_aspect_ratios,
+    compose_images,
+    generate_brand_asset,
+    generate_ranked_variations,
+    generate_text_rendering,
+    inpaint_image,
+    place_product,
+    refine_image_chain,
+)
+from t2i_core.types import EditResult, EvaluationReport, GenerationResult
 
 
 ImageModel = Literal["gpt-image-2", "MAI-Image-2", "MAI-Image-2e"]
@@ -20,8 +30,9 @@ class GeneratedAsset:
     """Generated image plus display metadata."""
 
     name: str
-    result: GenerationResult
+    result: GenerationResult | EditResult
     evaluation: EvaluationReport | None = None
+    caption: str | None = None
 
 
 def run_async(coro):
@@ -79,6 +90,183 @@ async def generate_aspect_package(
         ]
     finally:
         await close_provider(provider)
+
+
+async def generate_brand_template_assets(
+    content_brief: str,
+    model: ImageModel,
+    *,
+    colors: list[str],
+    font_style: str,
+    tone: str,
+    logo_description: str | None,
+    size: str,
+    quality: str,
+    n: int,
+) -> list[GeneratedAsset]:
+    settings = Settings()
+    provider = build_provider(settings, model)
+    brand = BrandTemplate(
+        colors=colors,
+        font_style=font_style,
+        tone=tone,
+        logo_description=logo_description,
+    )
+    try:
+        results = await generate_brand_asset(
+            provider,
+            brand,
+            content_brief,
+            size=size,
+            quality=quality,
+            n=n,
+        )
+        return [
+            GeneratedAsset(name=f"brand-{index}.png", result=result)
+            for index, result in enumerate(results, start=1)
+        ]
+    finally:
+        await close_provider(provider)
+
+
+async def generate_text_rendering_assets(
+    visual_prompt: str,
+    model: ImageModel,
+    *,
+    text: str,
+    size: str,
+    quality: str,
+    n: int,
+) -> list[GeneratedAsset]:
+    settings = Settings()
+    provider = build_provider(settings, model)
+    try:
+        results = await generate_text_rendering(
+            provider,
+            text,
+            visual_prompt,
+            size=size,
+            quality=quality,
+            n=n,
+        )
+        return [
+            GeneratedAsset(name=f"text-rendering-{index}.png", result=result)
+            for index, result in enumerate(results, start=1)
+        ]
+    finally:
+        await close_provider(provider)
+
+
+async def compose_uploaded_images(
+    images: list[bytes],
+    prompt: str,
+    *,
+    size: str,
+    quality: str,
+) -> list[GeneratedAsset]:
+    settings = Settings()
+    provider = GPTImageProvider(settings)
+    try:
+        results = await compose_images(provider, images, prompt, size=size, quality=quality)
+        return [
+            GeneratedAsset(name=f"composition-{index}.png", result=result)
+            for index, result in enumerate(results, start=1)
+        ]
+    finally:
+        await provider.client.close()
+
+
+async def inpaint_uploaded_image(
+    image: bytes,
+    prompt: str,
+    *,
+    mask: bytes | None,
+    size: str,
+    quality: str,
+) -> list[GeneratedAsset]:
+    settings = Settings()
+    provider = GPTImageProvider(settings)
+    try:
+        results = await inpaint_image(
+            provider,
+            image,
+            prompt,
+            mask=mask,
+            size=size,
+            quality=quality,
+        )
+        return [
+            GeneratedAsset(name=f"inpainting-{index}.png", result=result)
+            for index, result in enumerate(results, start=1)
+        ]
+    finally:
+        await provider.client.close()
+
+
+async def place_product_assets(
+    product_image: bytes,
+    environments: list[str],
+    *,
+    size: str,
+    quality: str,
+) -> list[GeneratedAsset]:
+    settings = Settings()
+    provider = GPTImageProvider(settings)
+    try:
+        results = await place_product(
+            provider,
+            product_image,
+            environments,
+            size=size,
+            quality=quality,
+        )
+        return [
+            GeneratedAsset(
+                name=f"product-placement-{index}.png",
+                result=result,
+                caption=environments[index - 1] if index - 1 < len(environments) else None,
+            )
+            for index, result in enumerate(results, start=1)
+        ]
+    finally:
+        await provider.client.close()
+
+
+async def refine_image_assets(
+    initial_prompt: str,
+    instructions: list[str],
+    *,
+    size: str,
+    quality: str,
+) -> list[GeneratedAsset]:
+    settings = Settings()
+    provider = GPTImageProvider(settings)
+    try:
+        chain = await refine_image_chain(
+            provider,
+            initial_prompt,
+            instructions,
+            size=size,
+            quality=quality,
+        )
+        assets = [
+            GeneratedAsset(
+                name="refinement-0-initial.png",
+                result=chain.initial,
+                caption=f"Initial: {initial_prompt}",
+            )
+        ]
+        assets.extend(
+            GeneratedAsset(
+                name=f"refinement-{index}.png",
+                result=result,
+                caption=f"Turn {index}: {instructions[index - 1]}",
+            )
+            for index, result in enumerate(chain.refinements, start=1)
+        )
+        return assets
+    finally:
+        await provider.client.close()
 
 
 async def evaluate_image(

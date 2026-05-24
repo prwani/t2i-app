@@ -6,7 +6,7 @@
 - Phase 2: Image providers and image-only scenarios.
 - Phase 3: Prompt decomposer, rubric evaluator, judge evaluator, and evaluation pipeline.
 - Phase 5: Image generation, evaluation, and design asset skills.
-- Phase 6: Streamlit UI and Azure Container Apps deployment assets.
+- Phase 6: Streamlit UI with all image scenarios, navigable galleries, and Azure Container Apps deployment assets.
 
 ## Deferred
 
