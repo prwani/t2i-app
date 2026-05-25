@@ -208,10 +208,47 @@ def _best_asset_message(assets) -> str | None:
     )
 
 
-def _render_progress_steps(has_assets: bool, has_evaluation: bool) -> None:
-    st.subheader("Progress")
-    st.markdown(f"{'✅' if has_assets else '◯'} **1. Generate**")
-    st.markdown(f"{'✅' if has_evaluation else '◯'} **2. Evaluate / Compare**")
+def _render_workflow_stepper(step: str, has_assets: bool, has_evaluation: bool) -> None:
+    st.markdown(
+        """
+        <style>
+        .workflow-stepper {display:flex; gap:.75rem; align-items:center; margin:.5rem 0 1rem 0;}
+        .workflow-step {flex:1; border-radius:999px; padding:.75rem 1rem; font-weight:700; text-align:center; border:1px solid rgba(148,163,184,.45);}
+        .workflow-step.done {background:rgba(34,197,94,.16); color:rgb(21,128,61); border-color:rgba(34,197,94,.55);}
+        .workflow-step.active {background:rgba(59,130,246,.18); color:rgb(29,78,216); border-color:rgba(59,130,246,.55);}
+        .workflow-step.locked {background:rgba(148,163,184,.10); color:rgb(100,116,139);}
+        .workflow-connector {width:44px; height:2px; background:rgba(148,163,184,.45);}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    generate_class = "done" if has_assets else "active"
+    evaluate_class = "done" if has_evaluation else "active" if step == "evaluate" and has_assets else "locked"
+    st.markdown(
+        f"""
+        <div class="workflow-stepper">
+          <div class="workflow-step {generate_class}">{"✅ " if has_assets else ""}1. Generate</div>
+          <div class="workflow-connector"></div>
+          <div class="workflow-step {evaluate_class}">{"✅ " if has_evaluation else ""}2. Evaluate / Compare</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _comparison_cards(assets) -> None:
+    evaluated = [asset for asset in assets if asset.evaluation is not None]
+    if not evaluated:
+        return
+    best = max(evaluated, key=lambda asset: asset.evaluation.composite_score)
+    columns = st.columns(min(4, len(evaluated)))
+    for index, asset in enumerate(evaluated):
+        report = asset.evaluation
+        with columns[index % len(columns)]:
+            st.image(asset.result.image, use_container_width=True)
+            st.markdown(f"**{'🏆 ' if asset is best else ''}{asset.name}**")
+            st.metric("Composite", f"{report.composite_score:.3f}")
+            st.caption(f"Decision: {report.threshold_decision}")
 
 
 with st.sidebar:
@@ -240,13 +277,34 @@ assets_key = f"generated_assets::{scenario}"
 eval_layers_key = f"eval_layers::{scenario}"
 assets = st.session_state.get(assets_key, [])
 has_evaluation = any(asset.evaluation is not None for asset in assets)
+step_key = f"workflow_step::{scenario}"
+if step_key not in st.session_state:
+    st.session_state[step_key] = "evaluate" if assets else "generate"
+if not assets:
+    st.session_state[step_key] = "generate"
 
-main_column, progress_column = st.columns([4, 1])
-with main_column:
-    st.title("Asset Creation Workflow")
+st.title("Asset Creation Workflow")
+_render_workflow_stepper(st.session_state[step_key], bool(assets), has_evaluation)
+
+nav_columns = st.columns([1, 1, 5])
+with nav_columns[0]:
+    if st.button("Generate", key=f"go-generate::{scenario}", use_container_width=True):
+        st.session_state[step_key] = "generate"
+        st.rerun()
+with nav_columns[1]:
+    if st.button(
+        "Evaluate / Compare",
+        key=f"go-evaluate::{scenario}",
+        disabled=not assets,
+        use_container_width=True,
+    ):
+        st.session_state[step_key] = "evaluate"
+        st.rerun()
+
+show_generate = st.session_state[step_key] == "generate"
+show_evaluate = st.session_state[step_key] == "evaluate" and bool(assets)
+if show_generate:
     st.subheader("Generate")
-with progress_column:
-    _render_progress_steps(bool(assets), has_evaluation)
 
 prompt_label = "Prompt"
 if scenario == "Brand template":
@@ -438,7 +496,7 @@ elif scenario == "Multi-turn refinement" and not _non_empty_lines(refinement_tex
 if disabled_reason:
     st.caption(disabled_reason)
 
-if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
+if st.button("Generate asset", type="primary", disabled=bool(disabled_reason)):
     with st.status("Generating images...", expanded=True) as status:
         try:
             if scenario == "Text-to-image generation":
@@ -521,14 +579,16 @@ if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
                 )
             st.session_state[assets_key] = assets
             st.session_state[f"{assets_key}_selected_index"] = 0
+            st.session_state[step_key] = "evaluate"
             status.update(label="Generation complete.", state="complete")
+            st.rerun()
         except Exception as exc:
             status.update(label="Generation failed.", state="error")
             st.error(f"Generation failed: {exc}")
 assets = st.session_state.get(assets_key, [])
-if assets:
+if show_evaluate:
     st.divider()
-    st.subheader("Evaluate generated results")
+    st.subheader("Evaluate / Compare")
     st.caption("Use this immediately after generation to compare outputs and pick the best candidate.")
     eval_columns = st.columns([3, 1, 1])
     with eval_columns[0]:
@@ -558,13 +618,6 @@ if assets:
                         eval_layers,  # type: ignore[arg-type]
                     )
                 )
-                if sort_by_score:
-                    evaluated_assets.sort(
-                        key=lambda asset: asset.evaluation.composite_score
-                        if asset.evaluation is not None
-                        else -1,
-                        reverse=True,
-                    )
                 st.session_state[assets_key] = evaluated_assets
                 st.session_state[f"{assets_key}_selected_index"] = 0
                 assets = evaluated_assets
@@ -574,18 +627,35 @@ if assets:
                 st.error(f"Evaluation failed: {exc}")
 
     reports = [asset.evaluation for asset in assets if asset.evaluation is not None]
+    display_assets = (
+        sorted(
+            assets,
+            key=lambda asset: asset.evaluation.composite_score if asset.evaluation is not None else -1,
+            reverse=True,
+        )
+        if reports and sort_by_score
+        else assets
+    )
     if reports:
-        render_evaluation_summary(reports)
+        render_evaluation_summary([asset.evaluation for asset in display_assets if asset.evaluation is not None])
         best_message = _best_asset_message(assets)
         if best_message:
             st.success(best_message)
+        _comparison_cards(display_assets)
 
-render_gallery(assets, gallery_id=assets_key)
+    render_gallery(display_assets, gallery_id=assets_key)
 
-reports = [asset.evaluation for asset in assets if asset.evaluation is not None]
-if reports:
-    st.subheader("Detailed evaluation results")
-    for asset in assets:
-        if asset.evaluation is not None:
-            with st.expander(asset.name):
-                render_evaluation_report(asset.evaluation)
+    reports = [asset.evaluation for asset in assets if asset.evaluation is not None]
+    if reports:
+        st.subheader("Detailed evaluation results")
+        for asset in assets:
+            if asset.evaluation is not None:
+                with st.expander(asset.name):
+                    render_evaluation_report(asset.evaluation)
+elif assets:
+    st.divider()
+    st.subheader("Generated preview")
+    render_gallery(assets, gallery_id=assets_key)
+    if st.button("Continue to Evaluate / Compare", type="primary"):
+        st.session_state[step_key] = "evaluate"
+        st.rerun()

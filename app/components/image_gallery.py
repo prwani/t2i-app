@@ -1,14 +1,12 @@
 """Image gallery component."""
 
-import hashlib
-
 import streamlit as st
 
 from services import GeneratedAsset
 
 
 def render_gallery(assets: list[GeneratedAsset], *, gallery_id: str = "gallery") -> None:
-    """Render a navigable gallery with large preview and previous/next controls."""
+    """Render a focused preview with a thumbnail filmstrip."""
 
     if not assets:
         st.info("No images generated yet.")
@@ -20,28 +18,16 @@ def render_gallery(assets: list[GeneratedAsset], *, gallery_id: str = "gallery")
     st.session_state[index_key] = max(0, min(st.session_state[index_key], len(assets) - 1))
 
     if len(assets) > 1:
-        previous_column, select_column, next_column = st.columns([1, 4, 1])
-        with previous_column:
-            if st.button("Previous", key=f"{gallery_id}-previous", disabled=st.session_state[index_key] == 0):
-                st.session_state[index_key] -= 1
-                st.rerun()
-        with select_column:
-            labels = [_asset_label(asset, index) for index, asset in enumerate(assets)]
-            selected_label = st.selectbox(
-                "Image",
-                labels,
-                index=st.session_state[index_key],
-                key=f"{gallery_id}-select",
-            )
-            st.session_state[index_key] = labels.index(selected_label)
-        with next_column:
-            if st.button(
-                "Next",
-                key=f"{gallery_id}-next",
-                disabled=st.session_state[index_key] >= len(assets) - 1,
-            ):
-                st.session_state[index_key] += 1
-                st.rerun()
+        st.caption("Select a thumbnail to preview it.")
+        columns = st.columns(min(5, len(assets)))
+        for index, asset in enumerate(assets):
+            with columns[index % len(columns)]:
+                selected = index == st.session_state[index_key]
+                label = f"{'▶ ' if selected else ''}{index + 1}"
+                if st.button(label, key=f"{gallery_id}-thumb-{index}", use_container_width=True):
+                    st.session_state[index_key] = index
+                    st.rerun()
+                st.image(asset.result.image, use_container_width=True)
 
     selected_index = st.session_state[index_key]
     selected_asset = assets[selected_index]
@@ -55,22 +41,9 @@ def render_gallery(assets: list[GeneratedAsset], *, gallery_id: str = "gallery")
         data=selected_asset.result.image,
         file_name=selected_asset.name,
         mime="image/png",
-        key=f"download-selected-{gallery_id}-{selected_index}-{_image_hash(selected_asset)}",
+        key=f"download-selected-{gallery_id}-{selected_index}",
     )
-
-    st.subheader("Thumbnails")
-    columns = st.columns(min(4, len(assets)))
-    for index, asset in enumerate(assets):
-        with columns[index % len(columns)]:
-            st.image(asset.result.image, caption=_asset_label(asset, index), use_container_width=True)
-            if st.button("Select", key=f"{gallery_id}-thumb-{index}"):
-                st.session_state[index_key] = index
-                st.rerun()
 
 
 def _asset_label(asset: GeneratedAsset, index: int) -> str:
     return f"{index + 1}. {asset.caption or asset.name}"
-
-
-def _image_hash(asset: GeneratedAsset) -> str:
-    return hashlib.sha256(asset.result.image).hexdigest()[:12]
