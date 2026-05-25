@@ -3,6 +3,8 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
+from httpx import Request, Response
+from openai import APIStatusError
 from PIL import Image
 
 from t2i_core.providers.gpt_image import GPTImageProvider
@@ -27,6 +29,29 @@ class FakeImages:
 class FakeClient:
     def __init__(self, image: bytes) -> None:
         self.images = FakeImages(image)
+
+
+class RetryFakeImages(FakeImages):
+    def __init__(self, image: bytes) -> None:
+        super().__init__(image)
+        self.edit_calls = 0
+
+    async def edit(self, **kwargs):
+        self.edit_calls += 1
+        if self.edit_calls == 1:
+            request = Request("POST", "https://example.openai.azure.com/openai/v1/images/edits")
+            response = Response(
+                408,
+                request=request,
+                json={"error": {"code": "Timeout", "message": "The operation was timeout."}},
+            )
+            raise APIStatusError("timeout", response=response, body=response.json())
+        return await super().edit(**kwargs)
+
+
+class RetryFakeClient:
+    def __init__(self, image: bytes) -> None:
+        self.images = RetryFakeImages(image)
 
 
 def _image_response(image: bytes):
@@ -80,3 +105,19 @@ async def test_gpt_provider_rejects_mask_without_alpha(settings, png_bytes: byte
 
     with pytest.raises(ImageValidationError, match="alpha"):
         await provider.edit([png_bytes], "edit", mask=png_bytes)
+
+
+@pytest.mark.asyncio
+async def test_gpt_provider_retries_transient_edit_timeout(settings, png_bytes: bytes) -> None:
+    client = RetryFakeClient(png_bytes)
+    provider = GPTImageProvider(
+        settings=settings,
+        client=client,  # type: ignore[arg-type]
+        max_retries=1,
+        retry_delay_seconds=0,
+    )
+
+    results = await provider.edit([png_bytes], "edit", mask=_rgba_mask((16, 16)))
+
+    assert results[0].image == png_bytes
+    assert client.images.edit_calls == 2

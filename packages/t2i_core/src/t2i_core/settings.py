@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     foundry_project_endpoint: HttpUrl | None = Field(default=None, alias="FOUNDRY_PROJECT_ENDPOINT")
     azure_openai_endpoint: HttpUrl = Field(alias="AZURE_OPENAI_ENDPOINT")
     azure_vision_endpoint: HttpUrl = Field(alias="AZURE_VISION_ENDPOINT")
+    azure_openai_timeout_seconds: float = Field(
+        default=300.0,
+        alias="AZURE_OPENAI_TIMEOUT_SECONDS",
+        gt=0,
+    )
 
     azure_openai_scope: str = Field(
         default="https://ai.azure.com/.default",

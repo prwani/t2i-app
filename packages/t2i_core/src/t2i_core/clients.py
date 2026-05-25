@@ -37,6 +37,7 @@ def get_openai_client(
     return AsyncOpenAI(
         base_url=settings.openai_base_url,
         api_key=provide_token,
+        timeout=settings.azure_openai_timeout_seconds,
     )
 
 
