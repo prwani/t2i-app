@@ -11,6 +11,7 @@ from services import (
     generate_brand_template_assets,
     generate_images,
     generate_text_rendering_assets,
+    improve_prompt_with_ai,
     inpaint_uploaded_image,
     place_product_assets,
     refine_image_assets,
@@ -210,12 +211,32 @@ elif scenario == "Text rendering":
     prompt_label = "Visual context"
 elif scenario == "Product placement":
     prompt_label = "Optional placement guidance"
-prompt = st.text_area(
-    prompt_label,
-    value=_example_value(scenario, selected_example),
-    height=120,
-    key=f"prompt::{scenario}::{selected_example}",
-)
+prompt_key = f"prompt::{scenario}::{selected_example}"
+if prompt_key not in st.session_state:
+    st.session_state[prompt_key] = _example_value(scenario, selected_example)
+
+prompt_column, improve_column = st.columns([4, 1])
+with improve_column:
+    st.write("")
+    if st.button(
+        "✨ Improve with AI",
+        disabled=not st.session_state.get(prompt_key, "").strip(),
+        help="Use the configured text LLM to rewrite this prompt using image-generation prompting best practices.",
+    ):
+        with st.spinner("Improving prompt..."):
+            try:
+                st.session_state[prompt_key] = run_async(
+                    improve_prompt_with_ai(st.session_state[prompt_key], scenario)
+                )
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Prompt improvement failed: {exc}")
+with prompt_column:
+    prompt = st.text_area(
+        prompt_label,
+        height=120,
+        key=prompt_key,
+    )
 
 colors: list[str] = []
 font_style = ""

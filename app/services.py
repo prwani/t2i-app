@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Literal
 
 from t2i_core import EvaluationPipeline, GPTImageProvider, MAIImageProvider, Settings
+from t2i_core.clients import get_openai_client
+from t2i_core.evaluation.openai_json import create_json_chat_completion
 from t2i_core.providers.base import ImageProvider
 from t2i_core.scenarios import (
     BrandTemplate,
@@ -23,6 +25,18 @@ from t2i_core.types import EditResult, EvaluationReport, GenerationResult
 
 ImageModel = Literal["gpt-image-2", "MAI-Image-2", "MAI-Image-2e"]
 LayerName = Literal["embedding", "rubric", "judge"]
+
+PROMPT_ENHANCEMENT_INSTRUCTIONS = """You improve prompts for image generation and editing workflows.
+Apply production image-prompting best practices:
+- Keep the user's intent and do not add unrelated objects, logos, brands, or claims.
+- Structure the prompt clearly: intended use, scene/background, subject, key details, style or medium, composition/framing, lighting/mood, and constraints.
+- Use concrete visual details for materials, textures, shapes, colors, camera/framing, and placement.
+- For photorealistic prompts, explicitly include photorealistic or professional photography when appropriate.
+- For text in images, put literal text in quotes and describe typography, hierarchy, size, color, placement, and contrast.
+- For edits and source-image workflows, specify what to change and what to preserve.
+- For multi-image composition, refer to inputs by index and role, such as Image 1: product photo, Image 2: background.
+- Avoid overloading the prompt; produce one clear, maintainable prompt.
+Respond with only this JSON object: {"enhanced_prompt":"..."}"""
 
 
 @dataclass
@@ -51,6 +65,36 @@ def build_provider(settings: Settings, model: ImageModel) -> ImageProvider:
     if model == "MAI-Image-2e":
         return MAIImageProvider(settings, deployment=settings.mai_image_efficient_deployment)
     return MAIImageProvider(settings, deployment=settings.mai_image_deployment)
+
+
+async def improve_prompt_with_ai(prompt: str, scenario: str) -> str:
+    """Improve an image prompt with the configured Azure OpenAI text model."""
+
+    cleaned = prompt.strip()
+    if not cleaned:
+        raise ValueError("Enter a prompt before improving it")
+    settings = Settings()
+    client = get_openai_client(settings)
+    model_config = settings.eval_model_config
+    try:
+        payload, _ = await create_json_chat_completion(
+            client,
+            model=model_config.judge_deployment,
+            is_o_series=model_config.judge_is_o_series,
+            instructions=PROMPT_ENHANCEMENT_INSTRUCTIONS,
+            user_content=(
+                f"Scenario: {scenario}\n"
+                f"Current prompt:\n{cleaned}\n\n"
+                "Improve this prompt for the selected image workflow. Return JSON only."
+            ),
+            max_tokens=1200,
+        )
+    finally:
+        await client.close()
+    enhanced = payload.get("enhanced_prompt")
+    if not isinstance(enhanced, str) or not enhanced.strip():
+        raise ValueError("Prompt enhancer did not return enhanced_prompt")
+    return enhanced.strip()
 
 
 async def generate_images(

@@ -20,6 +20,8 @@ Image Generate defaults to `MAI-Image-2e` for generation-only scenarios. Scenari
 
 The Image Generate page provides per-scenario example prompts. Scenarios with additional inputs also prefill useful defaults, such as brand colors, multi-line rendered text, aspect-ratio formats, product placement environments, and refinement instructions. Multi-image composition, inpainting, and product placement examples include GPT-generated local sample input images that users can try before uploading their own references.
 
+The prompt box includes an "Improve with AI" action that uses the configured Azure OpenAI text model to rewrite the current prompt with clearer scene structure, subject details, composition, lighting, constraints, and scenario-specific guidance.
+
 Generated-image galleries use an in-page large preview with Previous/Next controls, thumbnails, and a selected-image download button. This avoids relying on Streamlit's built-in image maximize overlay for multi-image navigation.
 
 ## Authentication model
