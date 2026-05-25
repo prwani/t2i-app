@@ -1,4 +1,4 @@
-"""Image generation page."""
+"""Asset creation workflow page."""
 
 from pathlib import Path
 
@@ -208,7 +208,11 @@ def _best_asset_message(assets) -> str | None:
     )
 
 
-st.title("Image Generate")
+def _render_progress_steps(has_assets: bool, has_evaluation: bool) -> None:
+    st.subheader("Progress")
+    st.markdown(f"{'✅' if has_assets else '◯'} **1. Generate**")
+    st.markdown(f"{'✅' if has_evaluation else '◯'} **2. Evaluate / Compare**")
+
 
 with st.sidebar:
     scenario = st.selectbox("Scenario", SCENARIOS)
@@ -231,6 +235,18 @@ with st.sidebar:
     quality = st.selectbox("Quality", ["low", "medium", "high"], index=2)
     size = st.selectbox("Size", ["1024x1024", "1536x1024", "1024x1536"])
     count = st.slider("Images", 1, 4, 1, disabled=scenario in GPT_ONLY_SCENARIOS)
+
+assets_key = f"generated_assets::{scenario}"
+eval_layers_key = f"eval_layers::{scenario}"
+assets = st.session_state.get(assets_key, [])
+has_evaluation = any(asset.evaluation is not None for asset in assets)
+
+main_column, progress_column = st.columns([4, 1])
+with main_column:
+    st.title("Asset Creation Workflow")
+    st.subheader("Generate")
+with progress_column:
+    _render_progress_steps(bool(assets), has_evaluation)
 
 prompt_label = "Prompt"
 if scenario == "Brand template":
@@ -422,8 +438,6 @@ elif scenario == "Multi-turn refinement" and not _non_empty_lines(refinement_tex
 if disabled_reason:
     st.caption(disabled_reason)
 
-assets_key = f"generated_assets::{scenario}"
-eval_layers_key = f"eval_layers::{scenario}"
 if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
     with st.status("Generating images...", expanded=True) as status:
         try:
@@ -511,7 +525,6 @@ if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
         except Exception as exc:
             status.update(label="Generation failed.", state="error")
             st.error(f"Generation failed: {exc}")
-
 assets = st.session_state.get(assets_key, [])
 if assets:
     st.divider()

@@ -8,21 +8,22 @@ Run locally:
 streamlit run app/Home.py
 ```
 
-## Pages
+## Navigation
 
-- Home
-- Image Generate: text-to-image generation, brand template, text rendering, aspect-ratio package, multi-image composition, inpainting, product placement, and multi-turn refinement
-- Evaluate
-- Compare
-- Batch Rank
+- Create
+  - Asset Creation Workflow: text-to-image generation, brand template, text rendering, aspect-ratio package, multi-image composition, inpainting, product placement, and multi-turn refinement
+- Evaluation Utils
+  - Evaluate
+  - Compare
+  - Batch Rank
 
-Image Generate defaults to `MAI-Image-2e` for generation-only scenarios. Scenarios that require image editing or source-image inputs automatically use `gpt-image-2`.
+Asset Creation Workflow is the app homepage. It defaults to `MAI-Image-2e` for generation-only scenarios. Scenarios that require image editing or source-image inputs automatically use `gpt-image-2`.
 
-The Image Generate page provides per-scenario example prompts. Scenarios with additional inputs also prefill useful defaults, such as brand colors, multi-line rendered text, aspect-ratio formats, product placement environments, and refinement instructions. Multi-image composition, inpainting, and product placement examples include GPT-generated local sample input images that users can try before uploading their own references.
+The Asset Creation Workflow page provides per-scenario example prompts. Scenarios with additional inputs also prefill useful defaults, such as brand colors, multi-line rendered text, aspect-ratio formats, product placement environments, and refinement instructions. Multi-image composition, inpainting, and product placement examples include GPT-generated local sample input images that users can try before uploading their own references.
 
 The prompt box includes an "Improve with AI" action that uses the configured Azure OpenAI text model to rewrite the current prompt with clearer scene structure, subject details, composition, lighting, constraints, and scenario-specific guidance.
 
-After generation, Image Generate includes an "Evaluate generated results" step. It uses scenario-aware default layers, shows the same score-summary matrix used by Compare/Evaluate, highlights the best candidate by composite score, and keeps detailed reports below the generated-image gallery. Standalone Evaluate and Compare pages remain available for external uploaded images.
+After generation, Asset Creation Workflow includes an "Evaluate generated results" step. It uses scenario-aware default layers, shows the same score-summary matrix used by Compare/Evaluate, highlights the best candidate by composite score, and keeps detailed reports below the generated-image gallery. The right side of the workflow shows two vertical progress steps: Generate and Evaluate / Compare. Standalone Evaluate and Compare pages remain available under Evaluation Utils for external uploaded images.
 
 Generated-image galleries use an in-page large preview with Previous/Next controls, thumbnails, and a selected-image download button. This avoids relying on Streamlit's built-in image maximize overlay for multi-image navigation.
 
