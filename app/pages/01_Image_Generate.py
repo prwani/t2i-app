@@ -4,9 +4,11 @@ from pathlib import Path
 
 import streamlit as st
 
+from components.evaluation_report import render_evaluation_report, render_evaluation_summary
 from components.image_gallery import render_gallery
 from services import (
     compose_uploaded_images,
+    evaluate_generated_assets,
     generate_aspect_package,
     generate_brand_template_assets,
     generate_images,
@@ -178,6 +180,32 @@ def _sample_asset_dir(scenario_slug: str, selected_example: str) -> Path:
         "Example prompt 5": "example-5",
     }
     return Path(__file__).resolve().parents[1] / "sample_assets" / scenario_slug / sample_dirs[label]
+
+
+def _default_eval_layers(selected_scenario: str) -> list[str]:
+    if selected_scenario in {"Brand template", "Text rendering"}:
+        return ["rubric", "judge"]
+    if selected_scenario in {
+        "Multi-image composition",
+        "Inpainting",
+        "Product placement",
+        "Multi-turn refinement",
+    }:
+        return ["rubric", "judge"]
+    if selected_scenario == "Aspect-ratio package":
+        return ["embedding", "judge"]
+    return ["embedding", "rubric", "judge"]
+
+
+def _best_asset_message(assets) -> str | None:
+    evaluated = [asset for asset in assets if asset.evaluation is not None]
+    if not evaluated:
+        return None
+    best = max(evaluated, key=lambda asset: asset.evaluation.composite_score)
+    return (
+        f"Best candidate: {best.name} "
+        f"(composite {best.evaluation.composite_score:.3f}, decision {best.evaluation.threshold_decision})"
+    )
 
 
 st.title("Image Generate")
@@ -395,6 +423,7 @@ if disabled_reason:
     st.caption(disabled_reason)
 
 assets_key = f"generated_assets::{scenario}"
+eval_layers_key = f"eval_layers::{scenario}"
 if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
     with st.status("Generating images...", expanded=True) as status:
         try:
@@ -483,4 +512,67 @@ if st.button("Generate", type="primary", disabled=bool(disabled_reason)):
             status.update(label="Generation failed.", state="error")
             st.error(f"Generation failed: {exc}")
 
-render_gallery(st.session_state.get(assets_key, []), gallery_id=assets_key)
+assets = st.session_state.get(assets_key, [])
+if assets:
+    st.divider()
+    st.subheader("Evaluate generated results")
+    st.caption("Use this immediately after generation to compare outputs and pick the best candidate.")
+    eval_columns = st.columns([3, 1, 1])
+    with eval_columns[0]:
+        eval_layers = st.multiselect(
+            "Evaluation layers",
+            ["embedding", "rubric", "judge"],
+            default=_default_eval_layers(scenario),
+            key=eval_layers_key,
+        )
+    with eval_columns[1]:
+        sort_by_score = st.checkbox("Sort by score", value=len(assets) > 1)
+    with eval_columns[2]:
+        st.write("")
+        evaluate_clicked = st.button(
+            "Evaluate results",
+            disabled=not eval_layers,
+            key=f"evaluate::{scenario}",
+            type="secondary",
+        )
+
+    if evaluate_clicked:
+        with st.status("Evaluating generated results...", expanded=True) as status:
+            try:
+                evaluated_assets = run_async(
+                    evaluate_generated_assets(
+                        assets,
+                        eval_layers,  # type: ignore[arg-type]
+                    )
+                )
+                if sort_by_score:
+                    evaluated_assets.sort(
+                        key=lambda asset: asset.evaluation.composite_score
+                        if asset.evaluation is not None
+                        else -1,
+                        reverse=True,
+                    )
+                st.session_state[assets_key] = evaluated_assets
+                st.session_state[f"{assets_key}_selected_index"] = 0
+                assets = evaluated_assets
+                status.update(label="Evaluation complete.", state="complete")
+            except Exception as exc:
+                status.update(label="Evaluation failed.", state="error")
+                st.error(f"Evaluation failed: {exc}")
+
+    reports = [asset.evaluation for asset in assets if asset.evaluation is not None]
+    if reports:
+        render_evaluation_summary(reports)
+        best_message = _best_asset_message(assets)
+        if best_message:
+            st.success(best_message)
+
+render_gallery(assets, gallery_id=assets_key)
+
+reports = [asset.evaluation for asset in assets if asset.evaluation is not None]
+if reports:
+    st.subheader("Detailed evaluation results")
+    for asset in assets:
+        if asset.evaluation is not None:
+            with st.expander(asset.name):
+                render_evaluation_report(asset.evaluation)

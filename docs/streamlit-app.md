@@ -22,6 +22,8 @@ The Image Generate page provides per-scenario example prompts. Scenarios with ad
 
 The prompt box includes an "Improve with AI" action that uses the configured Azure OpenAI text model to rewrite the current prompt with clearer scene structure, subject details, composition, lighting, constraints, and scenario-specific guidance.
 
+After generation, Image Generate includes an "Evaluate generated results" step. It uses scenario-aware default layers, shows the same score-summary matrix used by Compare/Evaluate, highlights the best candidate by composite score, and keeps detailed reports below the generated-image gallery. Standalone Evaluate and Compare pages remain available for external uploaded images.
+
 Generated-image galleries use an in-page large preview with Previous/Next controls, thumbnails, and a selected-image download button. This avoids relying on Streamlit's built-in image maximize overlay for multi-image navigation.
 
 ## Authentication model

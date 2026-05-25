@@ -335,6 +335,37 @@ async def evaluate_image(
         await pipeline.embedding.http_client.aclose()
 
 
+async def evaluate_generated_assets(
+    assets: list[GeneratedAsset],
+    layers: list[LayerName],
+) -> list[GeneratedAsset]:
+    """Evaluate generated assets using each asset's actual generation/edit prompt."""
+
+    settings = Settings()
+    pipeline = EvaluationPipeline(settings)
+    evaluated: list[GeneratedAsset] = []
+    try:
+        for asset in assets:
+            report = await pipeline.evaluate(
+                asset.result.image,
+                asset.result.prompt,
+                layers=layers,
+                model_used=asset.result.model,
+                image_path=asset.name,
+            )
+            evaluated.append(
+                GeneratedAsset(
+                    name=asset.name,
+                    result=asset.result,
+                    evaluation=report,
+                    caption=asset.caption,
+                )
+            )
+    finally:
+        await pipeline.embedding.http_client.aclose()
+    return evaluated
+
+
 async def generate_and_rank(
     prompt: str,
     *,
