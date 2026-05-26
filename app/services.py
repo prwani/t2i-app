@@ -109,6 +109,13 @@ async def generate_images(
     provider = build_provider(settings, model)
     try:
         results = await provider.generate(prompt, size=size, quality=quality, n=n)
+        if len(results) < n:
+            remaining = n - len(results)
+            extra_batches = await asyncio.gather(
+                *(provider.generate(prompt, size=size, quality=quality, n=1) for _ in range(remaining))
+            )
+            for batch in extra_batches:
+                results.extend(batch)
         return [
             GeneratedAsset(name=f"{model}-{index}.png", result=result)
             for index, result in enumerate(results, start=1)

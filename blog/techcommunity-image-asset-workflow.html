@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Build an Azure AI Foundry image asset workflow with GPT and MAI image models</title>
+  <style>
+    body {
+      color: #1f1f1f;
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 980px;
+      padding: 2rem;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.25;
+    }
+
+    h1 {
+      font-size: 2.3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      border-bottom: 1px solid #e5e5e5;
+      margin-top: 2.5rem;
+      padding-bottom: 0.35rem;
+    }
+
+    code {
+      background: #f3f2f1;
+      border-radius: 4px;
+      padding: 0.1rem 0.25rem;
+    }
+
+    pre {
+      background: #201f1e;
+      border-radius: 8px;
+      color: #f8f8f8;
+      overflow-x: auto;
+      padding: 1rem;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 1rem 0;
+      width: 100%;
+    }
+
+    th, td {
+      border: 1px solid #d2d0ce;
+      padding: 0.65rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f3f2f1;
+    }
+
+    .intro {
+      color: #605e5c;
+      font-size: 1.1rem;
+    }
+
+    .callout {
+      background: #f3f9ff;
+      border-left: 4px solid #0078d4;
+      margin: 1.25rem 0;
+      padding: 1rem;
+    }
+
+    .placeholder {
+      background: #faf9f8;
+      border: 2px dashed #c8c6c4;
+      border-radius: 8px;
+      color: #605e5c;
+      font-style: italic;
+      margin: 1rem 0;
+      padding: 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <article>
+    <h1>Build an Azure AI Foundry image asset workflow with GPT and MAI image models</h1>
+    <p class="intro">
+      Generative image models are most useful to product, marketing, and design teams when they are part of a repeatable workflow: prompt, generate, compare, evaluate, refine, and package the best assets for the channel where they will be used. This article walks through a practical reference app that brings that loop together with Azure AI Foundry image models, Azure AI Vision, a Python SDK, and a deployable web experience.
+    </p>
+
+    <div class="callout">
+      <strong>What you will build:</strong> a local and cloud-ready image asset workflow that can generate images with GPT-Image and MAI-Image deployments, evaluate prompt adherence and visual quality, compare candidates, and rank generated variations.
+    </div>
+
+    <h2>Why this pattern</h2>
+    <p>
+      A single text-to-image call can create a useful draft, but production asset creation usually needs more structure:
+    </p>
+    <ul>
+      <li><strong>Model choice:</strong> use MAI image deployments for efficient text-to-image generation, and GPT image deployments when editing, inpainting, composition, or product placement are required.</li>
+      <li><strong>Scenario guidance:</strong> apply repeatable prompt patterns for brand templates, text rendering, aspect-ratio adaptation, multi-turn refinement, and product placement.</li>
+      <li><strong>Objective review:</strong> evaluate every candidate with the same prompt-adherence and quality rubric instead of relying only on manual inspection.</li>
+      <li><strong>Deployment readiness:</strong> keep local experimentation and Azure Container Apps deployment on the same configuration model.</li>
+    </ul>
+
+    <h2>Solution architecture</h2>
+    <p>
+      The repository is organized around a reusable Python SDK named <code>t2i_core</code>. The SDK owns provider construction, model calls, scenario orchestration, evaluation, settings, and utility functions. The web UI and agent skills call into the SDK rather than duplicating model-specific logic.
+    </p>
+
+    <pre><code>Users / Streamlit UI / Agent skills
+              |
+              v
+          t2i_core SDK
+              |
+              +-- providers: GPT image and MAI image
+              +-- scenarios: asset workflows and editing patterns
+              +-- evaluation: embedding, rubric, judge, pipeline
+              +-- settings: endpoints, deployment names, thresholds
+              |
+              v
+Azure AI Foundry, Azure OpenAI, Azure AI Vision</code></pre>
+
+    <p>
+      The current app uses Streamlit for fast iteration. A common production evolution is to keep <code>t2i_core</code> as the backend domain layer, expose it through a FastAPI service, and build a Next.js front end for richer multi-user experiences, saved asset libraries, approval workflows, and integration with design systems.
+    </p>
+
+    <div class="placeholder">
+      Screenshot placeholder: architecture diagram showing Streamlit today and a future Next.js + FastAPI direction using the same SDK.
+    </div>
+
+    <h2>Image generation capabilities</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          <th>Recommended provider</th>
+          <th>Typical use</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Text-to-image generation</td>
+          <td>GPT image or MAI image</td>
+          <td>Create net-new visuals from a prompt.</td>
+        </tr>
+        <tr>
+          <td>Brand template</td>
+          <td>GPT image or MAI image</td>
+          <td>Apply brand colors, tone, product context, and layout constraints.</td>
+        </tr>
+        <tr>
+          <td>Text rendering</td>
+          <td>GPT image preferred</td>
+          <td>Generate assets where readable text matters.</td>
+        </tr>
+        <tr>
+          <td>Aspect-ratio adaptation</td>
+          <td>GPT image or MAI image</td>
+          <td>Create channel-ready sizes such as square, story, banner, hero, or mobile formats.</td>
+        </tr>
+        <tr>
+          <td>Composition, inpainting, product placement, refinement</td>
+          <td>GPT image</td>
+          <td>Use source images, masks, or previous outputs to create controlled edits.</td>
+        </tr>
+        <tr>
+          <td>Batch variations and ranking</td>
+          <td>GPT image plus evaluation</td>
+          <td>Generate multiple options and sort them with a normalized composite score.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Evaluation and compare workflow</h2>
+    <p>
+      Evaluation is built as layers so teams can choose the right cost and latency profile for each step:
+    </p>
+    <ul>
+      <li><strong>Embedding:</strong> uses Azure AI Vision vectors for broad semantic alignment between the prompt and image.</li>
+      <li><strong>Rubric:</strong> decomposes the prompt into visual attributes and verifies each attribute.</li>
+      <li><strong>Judge:</strong> reviews visual quality, coherence, style, aesthetics, and text legibility when relevant.</li>
+      <li><strong>Pipeline:</strong> combines selected layers into a normalized composite score. Skipped layers are not treated as zeroes.</li>
+    </ul>
+
+    <pre><code class="language-python">report = await EvaluationPipeline(settings).evaluate(
+    image_bytes,
+    prompt,
+    layers=["embedding", "rubric", "judge"],
+)</code></pre>
+
+    <p>
+      In the UI, creators can generate candidates, evaluate generated results, compare uploaded images against a shared prompt, or run a batch rank workflow that generates variations and orders them by score.
+    </p>
+
+    <div class="placeholder">
+      Screenshot placeholder: evaluation summary table with composite scores and per-layer results.
+    </div>
+
+    <h2>Prerequisites</h2>
+    <ul>
+      <li>Python 3.11.</li>
+      <li>Azure CLI for local Microsoft Entra authentication.</li>
+      <li>Access to Azure AI Foundry or Azure OpenAI image deployments.</li>
+      <li>Azure AI Vision endpoint for embedding-based evaluation.</li>
+      <li>Deployment names for GPT image, MAI image, and evaluation model deployments.</li>
+      <li>Optional: Azure Container Registry and Azure Container Apps for deployment.</li>
+    </ul>
+
+    <h2>1. Configure the local environment</h2>
+    <p>
+      Start with a Python environment and install the local SDK with the app dependencies:
+    </p>
+
+    <pre><code class="language-bash">uv venv --python 3.11 .venv
+source .venv/bin/activate
+uv pip install -e "packages/t2i_core[dev,app]"
+cp .env.example .env</code></pre>
+
+    <p>
+      Update <code>.env</code> with your resource endpoints and deployment names. Use environment variable names rather than hard-coding values in notebooks, scripts, or UI code.
+    </p>
+
+    <pre><code class="language-bash">FOUNDRY_PROJECT_ENDPOINT=https://&lt;resource&gt;.services.ai.azure.com/api/projects/&lt;project&gt;
+AZURE_OPENAI_ENDPOINT=https://&lt;resource&gt;.openai.azure.com
+AZURE_VISION_ENDPOINT=https://&lt;resource&gt;.cognitiveservices.azure.com
+GPT_IMAGE_2_DEPLOYMENT=gpt-image-2
+MAI_IMAGE_2_DEPLOYMENT=mai-image-2
+MAI_IMAGE_2E_DEPLOYMENT=mai-image-2-efficient
+EVAL_DECOMPOSER_DEPLOYMENT=o4-mini
+EVAL_RUBRIC_DEPLOYMENT=o4-mini
+EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
+
+    <p>
+      Authenticate locally with Microsoft Entra ID:
+    </p>
+
+    <pre><code class="language-bash">az login</code></pre>
+
+    <h2>2. Run the web app locally</h2>
+    <p>
+      Launch the Streamlit app:
+    </p>
+
+    <pre><code class="language-bash">streamlit run app/Home.py</code></pre>
+
+    <p>
+      The navigation is organized into two groups:
+    </p>
+    <ul>
+      <li><strong>Create:</strong> the asset creation workflow for generation, editing-oriented scenarios, and prompt refinement.</li>
+      <li><strong>Evaluation Utils:</strong> standalone Evaluate, Compare, and Batch Rank pages.</li>
+    </ul>
+
+    <div class="placeholder">
+      Screenshot placeholder: Asset Creation Workflow home page with model selector, scenario selector, prompt box, and generated gallery.
+    </div>
+
+    <h2>3. Generate channel-ready assets</h2>
+    <p>
+      The app supports API-supported generation sizes such as <code>1024x1024</code>, <code>1536x1024</code>, and <code>1024x1536</code>. Format helpers can map common channel targets such as <code>instagram_square</code>, <code>instagram_story</code>, <code>linkedin_banner</code>, <code>desktop_hero</code>, and <code>mobile_story</code> to supported model sizes.
+    </p>
+
+    <p>
+      A practical workflow for a campaign asset is:
+    </p>
+    <ol>
+      <li>Select a generation-only scenario and start with <code>MAI-Image-2e</code> for efficient exploration.</li>
+      <li>Use prompt improvement to add scene structure, subject details, lighting, constraints, and brand context.</li>
+      <li>Generate several candidates.</li>
+      <li>Switch to GPT image for workflows that require edits, source images, masks, product placement, or multi-turn refinement.</li>
+      <li>Evaluate and compare candidates before exporting.</li>
+    </ol>
+
+    <h2>4. Use the SDK from scripts or developer notebooks</h2>
+    <p>
+      The SDK is intentionally notebook-friendly. That makes it useful for prompt recipe development, evaluator calibration, and repeatable experiments before a workflow is promoted into the UI.
+    </p>
+
+    <pre><code class="language-python">from t2i_core import EvaluationPipeline, GPTImageProvider, MAIImageProvider, Settings
+
+settings = Settings()
+
+gpt_provider = GPTImageProvider(settings)
+mai_provider = MAIImageProvider(settings, deployment=settings.mai_image_efficient_deployment)</code></pre>
+
+    <p>
+      Recommended notebook sections include:
+    </p>
+    <ul>
+      <li><strong>Prompt recipe:</strong> prompt, negative constraints, target channel, and model choice.</li>
+      <li><strong>Generation run:</strong> parameters, image outputs, and metadata.</li>
+      <li><strong>Evaluation report:</strong> selected layers, thresholds, scores, and notes.</li>
+      <li><strong>Decision log:</strong> why one candidate was selected for refinement or publication.</li>
+    </ul>
+
+    <h2>5. Validate before deployment</h2>
+    <p>
+      Run the SDK tests to catch regressions in providers, settings, and evaluation helpers:
+    </p>
+
+    <pre><code class="language-bash">pytest packages/t2i_core/tests</code></pre>
+
+    <p>
+      For live validation, generate a small number of low- or medium-quality images, run embedding-only evaluation first, and then add rubric or judge layers when you need a deeper review.
+    </p>
+
+    <h2>6. Deploy to Azure Container Apps</h2>
+    <p>
+      The repository includes a container path for Azure Container Apps. Build the image with Azure Container Registry:
+    </p>
+
+    <pre><code class="language-bash">az acr build \
+  --registry &lt;acr-name&gt; \
+  --image t2i-app:latest \
+  .</code></pre>
+
+    <p>
+      Create or update the Container App with external ingress and environment variables:
+    </p>
+
+    <pre><code class="language-bash">az containerapp create \
+  --name t2i-app \
+  --resource-group &lt;resource-group&gt; \
+  --environment &lt;container-apps-environment&gt; \
+  --image &lt;acr-name&gt;.azurecr.io/t2i-app:latest \
+  --target-port 8000 \
+  --ingress external \
+  --registry-server &lt;acr-name&gt;.azurecr.io \
+  --user-assigned &lt;managed-identity-resource-id&gt; \
+  --env-vars \
+    FOUNDRY_PROJECT_ENDPOINT=&lt;foundry-project-endpoint&gt; \
+    AZURE_OPENAI_ENDPOINT=&lt;openai-endpoint&gt; \
+    AZURE_VISION_ENDPOINT=&lt;vision-endpoint&gt; \
+    AZURE_CLIENT_ID=&lt;managed-identity-client-id&gt;</code></pre>
+
+    <p>
+      After deployment, enable Microsoft Entra authentication at the Container Apps ingress layer and grant the managed identity access to the required Azure AI resources. For example:
+    </p>
+    <ul>
+      <li><code>Cognitive Services OpenAI User</code> on the Azure OpenAI or Azure AI Services resource.</li>
+      <li><code>Cognitive Services User</code> on the Azure AI Vision or Azure AI Services resource.</li>
+      <li>Project-level access in Azure AI Foundry if your tenant requires it for model invocation.</li>
+    </ul>
+
+    <p>
+      Use the Streamlit health endpoint for probes:
+    </p>
+
+    <pre><code>/_stcore/health</code></pre>
+
+    <h2>Production considerations</h2>
+    <ul>
+      <li><strong>Storage:</strong> the current app keeps generated images in session state. For multi-user production, add Azure Blob Storage for durable asset libraries and audit trails.</li>
+      <li><strong>Identity:</strong> prefer managed identity in Azure and <code>DefaultAzureCredential</code> locally. Avoid API keys in source code.</li>
+      <li><strong>Cost controls:</strong> default to embedding-only or generation-only checks during ideation, then run rubric and judge layers for shortlisted candidates.</li>
+      <li><strong>Human review:</strong> keep a final human approval step for brand, accessibility, legal, and regional requirements.</li>
+      <li><strong>Frontend evolution:</strong> move to Next.js when you need saved projects, collaborative review, richer galleries, or integration with enterprise design systems.</li>
+      <li><strong>Backend evolution:</strong> expose the SDK through FastAPI for durable jobs, queue-based generation, signed asset downloads, and central policy enforcement.</li>
+    </ul>
+
+    <h2>Cleanup</h2>
+    <p>
+      To stop local execution, end the Streamlit process in your terminal. For cloud resources, remove only the resources created for this walkthrough if they are no longer needed:
+    </p>
+
+    <pre><code class="language-bash">az containerapp delete --name t2i-app --resource-group &lt;resource-group&gt;
+az acr repository delete --name &lt;acr-name&gt; --image t2i-app:latest</code></pre>
+
+    <h2>Next steps</h2>
+    <ul>
+      <li>Add persistent asset storage with Azure Blob Storage.</li>
+      <li>Introduce background jobs for long-running generation and evaluation batches.</li>
+      <li>Create reusable notebook templates for prompt recipes and score calibration.</li>
+      <li>Split the production experience into a Next.js front end and FastAPI backend while keeping the existing SDK as the shared core.</li>
+      <li>Calibrate evaluation thresholds for each asset category and campaign type.</li>
+    </ul>
+
+    <p>
+      This pattern gives teams a practical bridge from local experimentation to an Azure-hosted image asset workflow. By pairing Azure AI Foundry image generation with repeatable evaluation and deployment practices, teams can move from one-off image prompts to a governed content creation loop.
+    </p>
+  </article>
+</body>
+</html>

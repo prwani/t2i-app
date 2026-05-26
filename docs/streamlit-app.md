@@ -1,6 +1,6 @@
-# Streamlit app
+# Streamlit prototype
 
-The Streamlit app lives in `app/` and provides an image-focused user interface.
+The Streamlit app lives in `app/` and provides the original image-focused prototype/legacy user interface. For new UI work, prefer the Next.js + FastAPI app described in [Web and API app](web-app.md).
 
 Run locally:
 
