@@ -1,6 +1,9 @@
 # Azure Container Apps deployment
 
-The FastAPI backend is designed to run behind Azure Container Apps ingress with Microsoft Entra ID authentication enabled at the platform layer. The Next.js frontend can run separately and call this API through `NEXT_PUBLIC_API_BASE_URL`.
+The complete solution runs as two Azure Container Apps in the same Container Apps environment:
+
+- `t2i-app`: FastAPI backend on port 8000.
+- `t2i-web`: Next.js frontend on port 3000, built with `NEXT_PUBLIC_API_BASE_URL` pointing to the backend URL.
 
 ## Prerequisites
 
@@ -15,7 +18,8 @@ The FastAPI backend is designed to run behind Azure Container Apps ingress with 
 RG=<resource-group>
 LOCATION=<azure-region>
 ACR=<globally-unique-acr-name>
-APP=t2i-app
+API_APP=t2i-app
+WEB_APP=t2i-web
 ENV=t2i-env
 LAW=t2i-law
 MI=t2i-app-mi
@@ -116,11 +120,11 @@ Some tenants only require account-scope RBAC; project-scope assignments are incl
 Use a unique image tag for each deployment so Container Apps creates a new revision instead of reusing a cached `latest` tag.
 
 ```bash
-TAG=deploy-$(date +%Y%m%d%H%M%S)
+API_TAG=api-$(date +%Y%m%d%H%M%S)
 
 az acr build \
   --registry "$ACR" \
-  --image "t2i-app:$TAG" \
+  --image "t2i-app:$API_TAG" \
   .
 ```
 
@@ -179,13 +183,13 @@ sed -i "s#__AZURE_CLIENT_ID__#$MI_CLIENT_ID#" /tmp/t2i-env-vars.txt
 ## Create or update the container app
 
 ```bash
-IMAGE="$ACR.azurecr.io/t2i-app:$TAG"
+API_IMAGE="$ACR.azurecr.io/t2i-app:$API_TAG"
 
 az containerapp create \
-  --name "$APP" \
+  --name "$API_APP" \
   --resource-group "$RG" \
   --environment "$ENV" \
-  --image "$IMAGE" \
+  --image "$API_IMAGE" \
   --target-port 8000 \
   --ingress external \
   --registry-server "$ACR.azurecr.io" \
@@ -198,32 +202,32 @@ For an existing app, update the image and environment variables:
 
 ```bash
 az containerapp update \
-  --name "$APP" \
+  --name "$API_APP" \
   --resource-group "$RG" \
-  --image "$IMAGE" \
-  --revision-suffix "${TAG//deploy-/d}" \
+  --image "$API_IMAGE" \
+  --revision-suffix "${API_TAG//api-/a}" \
   --set-env-vars $(cat /tmp/t2i-env-vars.txt)
 ```
 
-Enable Microsoft Entra authentication on the Container App after creation. Restrict access to the tenant, application, group, or app role appropriate for your deployment.
-
-## Smoke test
+## Smoke test the backend
 
 ```bash
-FQDN=$(az containerapp show \
-  --name "$APP" \
+API_FQDN=$(az containerapp show \
+  --name "$API_APP" \
   --resource-group "$RG" \
   --query properties.configuration.ingress.fqdn -o tsv)
 
-curl -fsS "https://$FQDN/health"
-curl -fsS "https://$FQDN/api/scenarios"
+API_BASE_URL="https://$API_FQDN"
+
+curl -fsS "$API_BASE_URL/health"
+curl -fsS "$API_BASE_URL/api/scenarios"
 ```
 
 To verify managed identity access to the configured models, run one generation request:
 
 ```bash
 curl -fsS --max-time 360 \
-  -X POST "https://$FQDN/api/generations" \
+  -X POST "$API_BASE_URL/api/generations" \
   -H "Content-Type: application/json" \
   -d '{
     "scenario": "text-to-image",
@@ -234,6 +238,83 @@ curl -fsS --max-time 360 \
     "n": 1
   }'
 ```
+
+## Build and deploy the frontend
+
+Build the Next.js frontend with the deployed backend URL. `NEXT_PUBLIC_API_BASE_URL` is a build-time setting for the browser bundle, so use a unique frontend image tag whenever the backend URL changes.
+
+```bash
+WEB_TAG=web-$(date +%Y%m%d%H%M%S)
+
+az acr build \
+  --registry "$ACR" \
+  --file web/Dockerfile \
+  --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" \
+  --image "t2i-web:$WEB_TAG" \
+  .
+```
+
+Create the frontend Container App:
+
+```bash
+WEB_IMAGE="$ACR.azurecr.io/t2i-web:$WEB_TAG"
+
+az containerapp create \
+  --name "$WEB_APP" \
+  --resource-group "$RG" \
+  --environment "$ENV" \
+  --image "$WEB_IMAGE" \
+  --target-port 3000 \
+  --ingress external \
+  --registry-server "$ACR.azurecr.io" \
+  --registry-identity "$MI_ID" \
+  --user-assigned "$MI_ID"
+```
+
+For an existing frontend app, update the image:
+
+```bash
+az containerapp update \
+  --name "$WEB_APP" \
+  --resource-group "$RG" \
+  --image "$WEB_IMAGE" \
+  --revision-suffix "${WEB_TAG//web-/w}"
+```
+
+Allow the deployed frontend origin through backend CORS:
+
+```bash
+WEB_FQDN=$(az containerapp show \
+  --name "$WEB_APP" \
+  --resource-group "$RG" \
+  --query properties.configuration.ingress.fqdn -o tsv)
+
+WEB_ORIGIN="https://$WEB_FQDN"
+
+az containerapp update \
+  --name "$API_APP" \
+  --resource-group "$RG" \
+  --set-env-vars CORS_ALLOWED_ORIGINS="$WEB_ORIGIN"
+```
+
+Enable Microsoft Entra authentication on both Container Apps after creation. Restrict access to the tenant, application, group, or app role appropriate for your deployment. If ingress auth is enabled on both apps, ensure the frontend can still call the backend API according to your chosen auth policy.
+
+## Smoke test the frontend and CORS
+
+```bash
+curl -fsS "$WEB_ORIGIN/health"
+curl -fsS "$WEB_ORIGIN/" | grep -i "Asset Creation Workflow"
+
+curl -fsS -I \
+  -X OPTIONS "$API_BASE_URL/api/scenarios" \
+  -H "Origin: $WEB_ORIGIN" \
+  -H "Access-Control-Request-Method: GET" \
+  | grep -i "access-control-allow-origin"
+
+curl -fsS "$WEB_ORIGIN/" | grep "$API_BASE_URL"
+```
+
+The last check verifies that the frontend bundle was built with the deployed backend URL.
 
 ## Storage note
 

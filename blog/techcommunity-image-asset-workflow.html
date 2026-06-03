@@ -336,7 +336,8 @@ mai25_provider = MAIImageProvider(settings, deployment=settings.mai_image_25_dep
     <pre><code class="language-bash">RG=&lt;resource-group&gt;
 LOCATION=&lt;azure-region&gt;
 ACR=&lt;globally-unique-acr-name&gt;
-APP=t2i-app
+API_APP=t2i-app
+WEB_APP=t2i-web
 ENV=t2i-env
 LAW=t2i-law
 MI=t2i-app-mi</code></pre>
@@ -377,11 +378,11 @@ az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-princi
 az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-principal-type ServicePrincipal --role "Cognitive Services User" --scope "$FOUNDRY_PROJECT_ID"</code></pre>
 
     <p>
-      Build with a unique image tag so Azure Container Apps creates a fresh revision instead of reusing a cached <code>latest</code> image:
+      Build the backend with a unique image tag so Azure Container Apps creates a fresh revision instead of reusing a cached <code>latest</code> image:
     </p>
 
-    <pre><code class="language-bash">TAG=deploy-$(date +%Y%m%d%H%M%S)
-az acr build --registry "$ACR" --image "t2i-app:$TAG" .</code></pre>
+    <pre><code class="language-bash">API_TAG=api-$(date +%Y%m%d%H%M%S)
+az acr build --registry "$ACR" --image "t2i-app:$API_TAG" .</code></pre>
 
     <p>
       Reuse the local <code>.env</code> file for Container App environment variables and add <code>AZURE_CLIENT_ID</code> for the user-assigned identity:
@@ -428,13 +429,13 @@ sed -i "s#__AZURE_CLIENT_ID__#$MI_CLIENT_ID#" /tmp/t2i-env-vars.txt</code></pre>
       Create the Container App with external ingress, managed identity for ACR pull, and the same managed identity for model access:
     </p>
 
-    <pre><code class="language-bash">IMAGE="$ACR.azurecr.io/t2i-app:$TAG"
+    <pre><code class="language-bash">API_IMAGE="$ACR.azurecr.io/t2i-app:$API_TAG"
 
 az containerapp create \
-  --name t2i-app \
+  --name "$API_APP" \
   --resource-group "$RG" \
   --environment "$ENV" \
-  --image "$IMAGE" \
+  --image "$API_IMAGE" \
   --target-port 8000 \
   --ingress external \
   --registry-server "$ACR.azurecr.io" \
@@ -447,30 +448,75 @@ az containerapp create \
     </p>
 
     <pre><code class="language-bash">az containerapp update \
-  --name "$APP" \
+  --name "$API_APP" \
   --resource-group "$RG" \
-  --image "$IMAGE" \
-  --revision-suffix "${TAG//deploy-/d}" \
+  --image "$API_IMAGE" \
+  --revision-suffix "${API_TAG//api-/a}" \
   --set-env-vars $(cat /tmp/t2i-env-vars.txt)</code></pre>
+
+    <p>
+      Build the Next.js frontend as a second Container App. The browser bundle needs the backend URL at build time through <code>NEXT_PUBLIC_API_BASE_URL</code>:
+    </p>
+
+    <pre><code class="language-bash">API_FQDN=$(az containerapp show --name "$API_APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+API_BASE_URL="https://$API_FQDN"
+WEB_TAG=web-$(date +%Y%m%d%H%M%S)
+
+az acr build \
+  --registry "$ACR" \
+  --file web/Dockerfile \
+  --build-arg NEXT_PUBLIC_API_BASE_URL="$API_BASE_URL" \
+  --image "t2i-web:$WEB_TAG" \
+  .
+
+WEB_IMAGE="$ACR.azurecr.io/t2i-web:$WEB_TAG"
+
+az containerapp create \
+  --name "$WEB_APP" \
+  --resource-group "$RG" \
+  --environment "$ENV" \
+  --image "$WEB_IMAGE" \
+  --target-port 3000 \
+  --ingress external \
+  --registry-server "$ACR.azurecr.io" \
+  --registry-identity "$MI_ID" \
+  --user-assigned "$MI_ID"</code></pre>
+
+    <p>
+      Then allow the deployed frontend origin through the backend CORS configuration:
+    </p>
+
+    <pre><code class="language-bash">WEB_FQDN=$(az containerapp show --name "$WEB_APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+WEB_ORIGIN="https://$WEB_FQDN"
+
+az containerapp update \
+  --name "$API_APP" \
+  --resource-group "$RG" \
+  --set-env-vars CORS_ALLOWED_ORIGINS="$WEB_ORIGIN"</code></pre>
 
     <p>
       After deployment, enable Microsoft Entra authentication at the Container Apps ingress layer and restrict access to the tenant, application, group, or app role appropriate for your deployment.
     </p>
 
     <p>
-      Use the FastAPI health endpoint and scenario catalog for probes:
+      Use the FastAPI health endpoint, frontend health endpoint, scenario catalog, and CORS preflight for probes:
     </p>
 
-    <pre><code class="language-bash">FQDN=$(az containerapp show --name "$APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
-curl -fsS "https://$FQDN/health"
-curl -fsS "https://$FQDN/api/scenarios"</code></pre>
+    <pre><code class="language-bash">curl -fsS "$API_BASE_URL/health"
+curl -fsS "$API_BASE_URL/api/scenarios"
+curl -fsS "$WEB_ORIGIN/health"
+curl -fsS "$WEB_ORIGIN/" | grep -i "Asset Creation Workflow"
+curl -fsS -I -X OPTIONS "$API_BASE_URL/api/scenarios" \
+  -H "Origin: $WEB_ORIGIN" \
+  -H "Access-Control-Request-Method: GET" \
+  | grep -i "access-control-allow-origin"</code></pre>
 
     <p>
       To verify managed identity access to the configured models, run one generation request:
     </p>
 
     <pre><code class="language-bash">curl -fsS --max-time 360 \
-  -X POST "https://$FQDN/api/generations" \
+  -X POST "$API_BASE_URL/api/generations" \
   -H "Content-Type: application/json" \
   -d '{
     "scenario": "text-to-image",

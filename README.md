@@ -57,9 +57,11 @@ Build and deploy using the guidance in [Azure Container Apps deployment](docs/az
 TAG=deploy-$(date +%Y%m%d%H%M%S)
 az acr build --registry <acr-name> --image t2i-app:$TAG .
 az containerapp create --name t2i-app --image <acr-name>.azurecr.io/t2i-app:$TAG --target-port 8000 --ingress external
+az acr build --registry <acr-name> --file web/Dockerfile --build-arg NEXT_PUBLIC_API_BASE_URL=https://<api-fqdn> --image t2i-web:$TAG .
+az containerapp create --name t2i-web --image <acr-name>.azurecr.io/t2i-web:$TAG --target-port 3000 --ingress external
 ```
 
-After deployment, enable Microsoft Entra authentication on the Container App and grant the managed identity the required Cognitive Services/Foundry roles.
+After deployment, enable Microsoft Entra authentication on the Container Apps, grant the managed identity the required Cognitive Services/Foundry roles, and set backend `CORS_ALLOWED_ORIGINS` to the deployed frontend origin.
 
 ## Detailed documentation
 

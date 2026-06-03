@@ -36,16 +36,27 @@ from app.services import GeneratedAsset
 GENERATED_DIR = Path(os.environ.get("GENERATED_ASSETS_DIR", "/tmp/t2i-generated-assets"))
 GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 SAMPLE_ASSETS_DIR = Path(__file__).resolve().parent.parent / "app" / "sample_assets"
+LOCAL_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+]
+
+
+def _cors_origins() -> list[str]:
+    configured = [
+        origin.strip().rstrip("/")
+        for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    return [*LOCAL_CORS_ORIGINS, *configured]
+
 
 app = FastAPI(title="T2I Backend API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
