@@ -41,10 +41,18 @@ class Settings(BaseSettings):
         alias="AZURE_VISION_SCOPE",
     )
 
-    mai_image_deployment: str = Field(default="mai-image-2", alias="MAI_IMAGE_2_DEPLOYMENT")
+    mai_image_deployment: str = Field(default="MAI-Image-2", alias="MAI_IMAGE_2_DEPLOYMENT")
     mai_image_efficient_deployment: str = Field(
-        default="mai-image-2-efficient",
+        default="MAI-Image-2e",
         alias="MAI_IMAGE_2E_DEPLOYMENT",
+    )
+    mai_image_25_flash_deployment: str = Field(
+        default="MAI-Image-2.5-Flash",
+        alias="MAI_IMAGE_2_5_FLASH_DEPLOYMENT",
+    )
+    mai_image_25_deployment: str = Field(
+        default="MAI-Image-2.5",
+        alias="MAI_IMAGE_2_5_DEPLOYMENT",
     )
     gpt_image_deployment: str = Field(default="gpt-image-2", alias="GPT_IMAGE_2_DEPLOYMENT")
     sora_deployment: str = Field(default="sora-2", alias="SORA_2_DEPLOYMENT")

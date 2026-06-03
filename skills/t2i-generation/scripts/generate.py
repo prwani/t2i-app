@@ -32,7 +32,21 @@ def parse_args() -> argparse.Namespace:
         "product-placement",
     ])
     parser.add_argument("--prompt", required=True)
-    parser.add_argument("--model", default="gpt-image-2", choices=["gpt-image-2", "mai-image-2", "mai-image-2e"])
+    parser.add_argument(
+        "--model",
+        default="gpt-image-2",
+        choices=[
+            "gpt-image-2",
+            "mai-image-2",
+            "mai-image-2e",
+            "mai-image-2.5-flash",
+            "mai-image-2.5",
+            "MAI-Image-2",
+            "MAI-Image-2e",
+            "MAI-Image-2.5-Flash",
+            "MAI-Image-2.5",
+        ],
+    )
     parser.add_argument("--image", action="append", default=[], help="Input image path; repeat for multiple images.")
     parser.add_argument("--mask", help="Optional PNG alpha mask for inpainting.")
     parser.add_argument("--brand-config", help="BrandTemplate JSON file.")
@@ -50,8 +64,12 @@ def parse_args() -> argparse.Namespace:
 def build_provider(settings: Settings, model: str) -> ImageProvider:
     if model == "gpt-image-2":
         return GPTImageProvider(settings)
-    if model == "mai-image-2e":
+    if model in {"mai-image-2e", "MAI-Image-2e"}:
         return MAIImageProvider(settings, deployment=settings.mai_image_efficient_deployment)
+    if model in {"mai-image-2.5-flash", "MAI-Image-2.5-Flash"}:
+        return MAIImageProvider(settings, deployment=settings.mai_image_25_flash_deployment)
+    if model in {"mai-image-2.5", "MAI-Image-2.5"}:
+        return MAIImageProvider(settings, deployment=settings.mai_image_25_deployment)
     return MAIImageProvider(settings, deployment=settings.mai_image_deployment)
 
 

@@ -261,10 +261,16 @@ with st.sidebar:
     model_disabled = scenario in GPT_ONLY_SCENARIOS
     model = st.selectbox(
         "Model",
-        ["gpt-image-2", "MAI-Image-2", "MAI-Image-2e"],
+        [
+            "gpt-image-2",
+            "MAI-Image-2",
+            "MAI-Image-2e",
+            "MAI-Image-2.5-Flash",
+            "MAI-Image-2.5",
+        ],
         index=0 if model_disabled else 2,
         disabled=model_disabled,
-        help="MAI-Image-2e is the default for generation-only scenarios. Editing scenarios require GPT-Image-2.",
+        help="MAI-Image-2e is the default for generation-only scenarios. MAI-Image-2.5 and MAI-Image-2.5-Flash are also supported. Editing scenarios require GPT-Image-2.",
     )
     if model_disabled:
         model = "gpt-image-2"

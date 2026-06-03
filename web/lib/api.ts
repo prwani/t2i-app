@@ -7,6 +7,7 @@ export type Scenario = {
   description: string;
   defaultModel: string;
   forcedModel?: string | null;
+  modelOptions: string[];
   defaultPrompt: string;
   examples: string[];
   exampleExtras: Array<Record<string, unknown>>;
@@ -64,6 +65,11 @@ export function normalizeScenario(raw: Record<string, unknown>): Scenario {
     description: String(pick(raw.description, "Create polished campaign-ready assets.")),
     defaultModel: String(pick(raw.defaultModel ?? raw.default_model ?? raw.model, "gpt-image-1")),
     forcedModel: (raw.forcedModel ?? raw.forced_model ?? null) as string | null,
+    modelOptions: Array.isArray(raw.modelOptions)
+      ? raw.modelOptions.map(String)
+      : Array.isArray(raw.model_options)
+        ? raw.model_options.map(String)
+        : [],
     defaultPrompt: String(
       pick(
         raw.defaultPrompt ??

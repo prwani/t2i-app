@@ -28,6 +28,8 @@ def test_scenarios_include_frontend_metadata() -> None:
     text_to_image = next(scenario for scenario in scenarios if scenario["id"] == "text-to-image")
     assert text_to_image["default_model"] == "MAI-Image-2e"
     assert text_to_image["forced_model"] is None
+    assert "MAI-Image-2.5-Flash" in text_to_image["model_options"]
+    assert "MAI-Image-2.5" in text_to_image["model_options"]
     assert text_to_image["example_prompts"]
 
 

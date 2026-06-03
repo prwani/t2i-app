@@ -7,7 +7,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-ImageModel = Literal["gpt-image-2", "MAI-Image-2", "MAI-Image-2e"]
+ImageModel = Literal[
+    "gpt-image-2",
+    "MAI-Image-2",
+    "MAI-Image-2e",
+    "MAI-Image-2.5-Flash",
+    "MAI-Image-2.5",
+]
 LayerName = Literal["embedding", "rubric", "judge"]
 JobStatus = Literal["queued", "running", "succeeded", "failed"]
 
@@ -17,6 +23,7 @@ class ScenarioResponse(BaseModel):
     label: str
     default_model: str
     forced_model: str | None
+    model_options: list[str] = Field(default_factory=list)
     example_prompts: list[str]
     example_extras: list[dict[str, Any]] = Field(default_factory=list)
     recommended_eval_layers: list[LayerName]
@@ -103,4 +110,3 @@ class EvaluationResponse(BaseModel):
 
 class ComparisonResponse(EvaluationResponse):
     ranked: list[EvaluationReportResponse] = Field(default_factory=list)
-

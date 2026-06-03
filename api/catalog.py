@@ -37,6 +37,7 @@ class ScenarioMetadata(TypedDict):
     service_label: str
     default_model: str
     forced_model: str | None
+    model_options: list[str]
     example_prompts: list[str]
     example_extras: list[ExampleExtra]
     recommended_eval_layers: list[str]
@@ -51,6 +52,13 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Text-to-image generation",
         "default_model": "MAI-Image-2e",
         "forced_model": None,
+        "model_options": [
+            "MAI-Image-2e",
+            "MAI-Image-2.5-Flash",
+            "MAI-Image-2.5",
+            "MAI-Image-2",
+            "gpt-image-2",
+        ],
         "example_prompts": [
             "Photorealistic travel-style image for a tourism campaign: a friendly dog sitting in the foreground near the Gateway of India in Mumbai, looking toward the Arabian Sea. Show the full stone arch monument in the background, a lively crowd of visitors, warm late-afternoon light, natural shadows, realistic scale, and no readable text or watermark.",
             "Professional product-lifestyle photograph: a futuristic electric scooter parked outside a modern glass office at sunrise. Center the scooter as the hero subject, show subtle reflections on the pavement, warm golden light, clean urban architecture, premium mobility-brand mood, realistic materials, and no logos or readable text.",
@@ -69,6 +77,13 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Brand template",
         "default_model": "MAI-Image-2e",
         "forced_model": None,
+        "model_options": [
+            "MAI-Image-2e",
+            "MAI-Image-2.5-Flash",
+            "MAI-Image-2.5",
+            "MAI-Image-2",
+            "gpt-image-2",
+        ],
         "example_prompts": [
             "Website launch banner for a secure cloud backup product aimed at small businesses. Show a clean abstract cloud vault, protected files, subtle shield motif, confident enterprise layout, room for headline copy on the left, polished SaaS visual style, and no readable text.",
             "Hero image for an AI productivity assistant that helps teams summarize meetings. Show a modern workspace with floating summary cards, calendar cues, and collaborative team silhouettes, friendly futuristic tone, soft gradients, clean UI-inspired composition, and no readable text.",
@@ -93,6 +108,13 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Text rendering",
         "default_model": "MAI-Image-2e",
         "forced_model": None,
+        "model_options": [
+            "MAI-Image-2e",
+            "MAI-Image-2.5-Flash",
+            "MAI-Image-2.5",
+            "MAI-Image-2",
+            "gpt-image-2",
+        ],
         "example_prompts": [
             "Minimal technology conference poster with a clean hierarchy: large bold headline at the top, medium subtitle centered below, and small location/date line near the bottom. Use abstract blue gradients, strong contrast, crisp sans-serif typography, generous margins, and ensure every quoted line is spelled exactly.",
             "Photorealistic coffee shop sidewalk chalkboard sign on a sunny street. Use large hand-lettered headline at the top, medium menu line in the middle, and small footer text at the bottom; high contrast cream lettering on dark board, warm cafe background blur, and exact spelling.",
@@ -117,6 +139,13 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Aspect-ratio package",
         "default_model": "gpt-image-2",
         "forced_model": None,
+        "model_options": [
+            "gpt-image-2",
+            "MAI-Image-2e",
+            "MAI-Image-2.5-Flash",
+            "MAI-Image-2.5",
+            "MAI-Image-2",
+        ],
         "example_prompts": [
             "Polished SaaS product hero visual for a marketing campaign: floating analytics dashboards, soft blue-purple gradients, subtle glassmorphism, centered product narrative with safe negative space around edges for cropping across formats, no readable text.",
             "Luxury travel campaign image featuring a beach resort at golden hour: elegant infinity pool, palm silhouettes, warm sunlight, premium editorial photography, aspirational mood, central subject that works in square, portrait, and banner crops, no readable text.",
@@ -141,6 +170,7 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Multi-image composition",
         "default_model": "gpt-image-2",
         "forced_model": "gpt-image-2",
+        "model_options": ["gpt-image-2"],
         "example_prompts": [
             "Create a realistic premium advertisement using Image 1 as the product photo and Image 2 as the background scene. Place the product naturally on the counter, match perspective and lighting, add realistic contact shadows and reflections, preserve the product shape and color, and do not add readable text.",
             "Use Image 1 as the main object and Image 2 as the destination scene. Place the object naturally into the scene at realistic scale, align camera angle, match ambient lighting, preserve object geometry and material, and keep the final image photorealistic with no extra text.",
@@ -165,6 +195,7 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Inpainting",
         "default_model": "gpt-image-2",
         "forced_model": "gpt-image-2",
+        "model_options": ["gpt-image-2"],
         "example_prompts": [
             "Change only the transparent masked region into a clean white studio background with soft natural shadows. Preserve all unmasked furniture, perspective, lighting direction, colors, and image edges exactly; do not add text or new objects.",
             "Change only the object inside the transparent mask to glossy emerald green ceramic while preserving its shape, size, highlights, shadows, camera angle, and surrounding white studio background. Do not modify unmasked areas or add text.",
@@ -189,6 +220,7 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Product placement",
         "default_model": "gpt-image-2",
         "forced_model": "gpt-image-2",
+        "model_options": ["gpt-image-2"],
         "example_prompts": [
             "Use the uploaded product image as the exact hero product. Place it naturally into each environment with realistic scale, perspective, contact shadows, and reflections. Preserve product geometry, material, and color; do not invent labels or readable text.",
             "Create premium lifestyle product photography for each environment. Keep the uploaded product accurate and recognizable, adapt lighting to the scene, use shallow depth of field, realistic shadows, and a polished commercial photography style with no added text.",
@@ -213,6 +245,7 @@ SCENARIOS: dict[ScenarioId, ScenarioMetadata] = {
         "service_label": "Multi-turn refinement",
         "default_model": "gpt-image-2",
         "forced_model": "gpt-image-2",
+        "model_options": ["gpt-image-2"],
         "example_prompts": [
             "Premium product hero image of wireless earbuds on a dark reflective studio surface. Use centered composition, crisp highlights on glossy materials, subtle blue rim light, shallow depth of field, negative space for copy, and no readable text.",
             "Modern app launch visual with a smartphone mockup as the hero subject, abstract gradient background, floating UI cards, clean SaaS-style lighting, polished promotional composition, and no readable text.",

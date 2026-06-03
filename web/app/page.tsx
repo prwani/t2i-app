@@ -10,6 +10,7 @@ const fallbackScenarios: Scenario[] = [
     name: "Product launch",
     description: "Hero visuals, launch banners, and social-ready concepts for a new product.",
     defaultModel: "gpt-image-1",
+    modelOptions: ["gpt-image-1"],
     defaultPrompt: "Create a premium product launch hero image for a sleek smart speaker on a warm gradient studio background.",
     examples: [],
     exampleExtras: []
@@ -19,6 +20,7 @@ const fallbackScenarios: Scenario[] = [
     name: "Seasonal campaign",
     description: "High-converting campaign artwork for holidays, promos, and limited runs.",
     defaultModel: "gpt-image-1",
+    modelOptions: ["gpt-image-1"],
     defaultPrompt: "Design a festive but modern winter campaign image for a coffee brand, cozy lighting, premium packaging.",
     examples: [],
     exampleExtras: []
@@ -28,6 +30,7 @@ const fallbackScenarios: Scenario[] = [
     name: "Brand refresh",
     description: "Explore new visual systems while preserving brand cues and audience fit.",
     defaultModel: "gpt-image-1",
+    modelOptions: ["gpt-image-1"],
     defaultPrompt: "Create three visual directions for a modern wellness brand refresh using calming gradients and natural textures.",
     examples: [],
     exampleExtras: []

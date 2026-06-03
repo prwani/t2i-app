@@ -53,7 +53,7 @@ async def test_mai_provider_decodes_b64_response(settings, png_bytes: bytes) -> 
     assert client.params == {"api-version": "preview"}
     assert client.headers["Authorization"] == "Bearer fake-token"
     assert client.json == {
-        "model": "mai-image-2",
+        "model": "MAI-Image-2",
         "prompt": "red square",
         "width": 1024,
         "height": 1024,

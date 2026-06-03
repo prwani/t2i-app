@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { API_BASE_URL, Asset, Job, Scenario, api, normalizeAsset, normalizeJob } from "../../../lib/api";
 
 /* ── fallback scenarios (same as home) ────────────────────────── */
 const fallbackScenarios: Scenario[] = [
-  { id: "product-launch", name: "Product launch", description: "Hero visuals, launch banners, and social-ready concepts.", defaultModel: "gpt-image-1", defaultPrompt: "Create a premium product launch hero image for a sleek smart speaker on a warm gradient studio background.", examples: ["Luxury skincare bottle on marble, soft shadows, editorial campaign style", "Outdoor adventure backpack floating over topographic lines, bold retail banner", "Minimal fintech debit card launch visual with glassmorphism and confident blue lighting"], exampleExtras: [] },
-  { id: "seasonal-campaign", name: "Seasonal campaign", description: "High-converting campaign artwork for holidays, promos, and limited runs.", defaultModel: "gpt-image-1", defaultPrompt: "Design a festive but modern winter campaign image for a coffee brand, cozy lighting, premium packaging.", examples: ["Back-to-school laptop bundle with energetic paper-cut shapes", "Summer travel sale poster with sunlit luggage and tropical gradients", "Black Friday electronics campaign, cinematic product wall, dramatic contrast"], exampleExtras: [] },
-  { id: "brand-refresh", name: "Brand refresh", description: "Explore new visual systems while preserving brand cues and audience fit.", defaultModel: "gpt-image-1", defaultPrompt: "Create three visual directions for a modern wellness brand refresh using calming gradients and natural textures.", examples: ["Premium pet food brand refresh with playful typography and natural ingredients", "B2B SaaS homepage illustration style: trustworthy, modern, human", "Boutique hotel visual identity mood image with art deco cues"], exampleExtras: [] }
+  { id: "product-launch", name: "Product launch", description: "Hero visuals, launch banners, and social-ready concepts.", defaultModel: "gpt-image-1", modelOptions: ["gpt-image-1"], defaultPrompt: "Create a premium product launch hero image for a sleek smart speaker on a warm gradient studio background.", examples: ["Luxury skincare bottle on marble, soft shadows, editorial campaign style", "Outdoor adventure backpack floating over topographic lines, bold retail banner", "Minimal fintech debit card launch visual with glassmorphism and confident blue lighting"], exampleExtras: [] },
+  { id: "seasonal-campaign", name: "Seasonal campaign", description: "High-converting campaign artwork for holidays, promos, and limited runs.", defaultModel: "gpt-image-1", modelOptions: ["gpt-image-1"], defaultPrompt: "Design a festive but modern winter campaign image for a coffee brand, cozy lighting, premium packaging.", examples: ["Back-to-school laptop bundle with energetic paper-cut shapes", "Summer travel sale poster with sunlit luggage and tropical gradients", "Black Friday electronics campaign, cinematic product wall, dramatic contrast"], exampleExtras: [] },
+  { id: "brand-refresh", name: "Brand refresh", description: "Explore new visual systems while preserving brand cues and audience fit.", defaultModel: "gpt-image-1", modelOptions: ["gpt-image-1"], defaultPrompt: "Create three visual directions for a modern wellness brand refresh using calming gradients and natural textures.", examples: ["Premium pet food brand refresh with playful typography and natural ingredients", "B2B SaaS homepage illustration style: trustworthy, modern, human", "Boutique hotel visual identity mood image with art deco cues"], exampleExtras: [] }
 ];
 
 const statusCopy: Record<string, string> = { queued: "Queued", running: "Generating…", succeeded: "Ready", completed: "Ready", failed: "Needs attention" };
+
+type DetailModal = {
+  title: string;
+  subtitle?: string;
+  body: ReactNode;
+};
 
 export default function StudioPage() {
   const params = useParams();
@@ -46,6 +52,7 @@ export default function StudioPage() {
   const [comparison, setComparison] = useState<Record<string, unknown> | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [detailModal, setDetailModal] = useState<DetailModal | null>(null);
   const [scenarioPickerOpen, setScenarioPickerOpen] = useState(false);
 
   const scenario = useMemo(
@@ -296,7 +303,17 @@ export default function StudioPage() {
             <div className="sidebarBody">
               <label className="sField">
                 <span>Model</span>
-                <input value={model} onChange={(e) => setModel(e.target.value)} />
+                {scenario.modelOptions.length ? (
+                  <select value={model} onChange={(e) => setModel(e.target.value)} disabled={Boolean(scenario.forcedModel)}>
+                    {scenario.modelOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input value={model} onChange={(e) => setModel(e.target.value)} disabled={Boolean(scenario.forcedModel)} />
+                )}
               </label>
               <label className="sField">
                 <span>Image count</span>
@@ -534,15 +551,68 @@ export default function StudioPage() {
                   const rubric = report.rubric as Record<string, unknown> | undefined;
                   const judge = report.llm_judge as Record<string, unknown> | undefined;
                   const decision = report.threshold_decision as string | undefined;
+                  const assetName = String(entry.name ?? `Asset ${i + 1}`);
                   return (
                     <div key={String(entry.asset_id ?? i)} className="evalReportCard">
-                      <h3>{String(entry.name ?? `Asset ${i + 1}`)}</h3>
+                      <h3>{assetName}</h3>
                       <div className="scoreRow">
-                        <ScoreCard label="Composite" value={composite !== null ? `${Math.round(composite * 100)}%` : "—"} highlight />
-                        <ScoreCard label="Embedding" value={formatLayerScore(embedding)} />
-                        <ScoreCard label="Rubric" value={formatLayerScore(rubric)} />
-                        <ScoreCard label="LLM Judge" value={formatLayerScore(judge)} />
-                        <ScoreCard label="Decision" value={decision ?? "—"} highlight={decision === "accept"} />
+                        <ScoreCard
+                          label="Composite"
+                          value={composite !== null ? `${Math.round(composite * 100)}%` : "—"}
+                          highlight
+                          onDeepDive={() =>
+                            setDetailModal({
+                              title: "Composite evaluation",
+                              subtitle: assetName,
+                              body: <CompositeDetails report={report} />
+                            })
+                          }
+                        />
+                        <ScoreCard
+                          label="Embedding"
+                          value={formatLayerScore(embedding)}
+                          onDeepDive={() =>
+                            setDetailModal({
+                              title: "Embedding similarity",
+                              subtitle: assetName,
+                              body: <EmbeddingDetails embedding={embedding} />
+                            })
+                          }
+                        />
+                        <ScoreCard
+                          label="Rubric"
+                          value={formatLayerScore(rubric)}
+                          onDeepDive={() =>
+                            setDetailModal({
+                              title: "Prompt rubric deep dive",
+                              subtitle: assetName,
+                              body: <RubricDetails rubric={rubric} />
+                            })
+                          }
+                        />
+                        <ScoreCard
+                          label="LLM Judge"
+                          value={formatLayerScore(judge)}
+                          onDeepDive={() =>
+                            setDetailModal({
+                              title: "LLM judge deep dive",
+                              subtitle: assetName,
+                              body: <JudgeDetails judge={judge} />
+                            })
+                          }
+                        />
+                        <ScoreCard
+                          label="Decision"
+                          value={decision ?? "—"}
+                          highlight={decision === "accept"}
+                          onDeepDive={() =>
+                            setDetailModal({
+                              title: "Threshold decision",
+                              subtitle: assetName,
+                              body: <DecisionDetails report={report} />
+                            })
+                          }
+                        />
                       </div>
                       {judge && typeof (judge as Record<string, unknown>).overall_impression === "string" && (
                         <div className="recommendation">
@@ -567,6 +637,30 @@ export default function StudioPage() {
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightboxUrl} alt="Full size preview" className="lightboxImg" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
+      {detailModal && (
+        <div className="detailOverlay" role="presentation" onClick={() => setDetailModal(null)}>
+          <section
+            className="detailModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="detailHeader">
+              <div>
+                <p className="eyebrow">Evaluation detail</p>
+                <h2 id="detail-title">{detailModal.title}</h2>
+                {detailModal.subtitle && <p>{detailModal.subtitle}</p>}
+              </div>
+              <button type="button" className="detailClose" onClick={() => setDetailModal(null)} aria-label="Close details">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div className="detailBody">{detailModal.body}</div>
+          </section>
         </div>
       )}
     </main>
@@ -629,11 +723,234 @@ async function samplePathToAssetInput(path: string): Promise<{ name: string; dat
   };
 }
 
-function ScoreCard({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function ScoreCard({
+  label,
+  value,
+  highlight = false,
+  onDeepDive
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  onDeepDive?: () => void;
+}) {
   return (
     <div className={`scoreCard${highlight ? " highlight" : ""}`}>
-      <span>{label}</span>
+      <div className="scoreCardTop">
+        <span>{label}</span>
+        {onDeepDive && (
+          <button
+            type="button"
+            className="deepDiveBtn"
+            onClick={onDeepDive}
+            aria-label={`Open ${label} details`}
+            title={`Open ${label} details`}
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.7"/><path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
+          </button>
+        )}
+      </div>
       <strong>{value}</strong>
     </div>
   );
+}
+
+function CompositeDetails({ report }: { report: Record<string, unknown> }) {
+  const weights = asRecord(report.weights);
+  return (
+    <div className="detailStack">
+      <dl className="detailGrid">
+        <DetailItem label="Composite score" value={formatPercent(report.composite_score)} />
+        <DetailItem label="Layers run" value={readStringArray(report.layers_run).join(", ") || "—"} />
+        <DetailItem label="Model used" value={String(report.model_used ?? "—")} />
+        <DetailItem label="Evaluation time" value={typeof report.evaluation_time_ms === "number" ? `${report.evaluation_time_ms} ms` : "—"} />
+      </dl>
+      <DetailSection title="Weights">
+        <KeyValueList value={weights} />
+      </DetailSection>
+      <DetailSection title="Threshold reasons">
+        <ReasonList reasons={readStringArray(report.threshold_reasons)} />
+      </DetailSection>
+    </div>
+  );
+}
+
+function EmbeddingDetails({ embedding }: { embedding: Record<string, unknown> | undefined }) {
+  if (!embedding) return <EmptyDetail message="Embedding evaluation was not run for this asset." />;
+  return (
+    <div className="detailStack">
+      <dl className="detailGrid">
+        <DetailItem label="Cosine similarity" value={formatPercent(embedding.cosine_similarity)} />
+        <DetailItem label="Prompt vector model" value={String(embedding.model ?? "—")} />
+      </dl>
+      <DetailSection title="Raw embedding metrics">
+        <KeyValueList value={embedding} />
+      </DetailSection>
+    </div>
+  );
+}
+
+function RubricDetails({ rubric }: { rubric: Record<string, unknown> | undefined }) {
+  if (!rubric) return <EmptyDetail message="Rubric evaluation was not run for this asset." />;
+  const attributes = Array.isArray(rubric.attributes) ? rubric.attributes : [];
+  return (
+    <div className="detailStack">
+      <dl className="detailGrid">
+        <DetailItem label="Rubric score" value={formatPercent(rubric.rubric_score)} />
+        <DetailItem label="Matched" value={`${String(rubric.matched_attributes ?? 0)} / ${String(rubric.total_attributes ?? attributes.length)}`} />
+        <DetailItem label="Partial" value={String(rubric.partial_attributes ?? 0)} />
+      </dl>
+      <DetailSection title="Questions and results">
+        {attributes.length ? (
+          <div className="rubricTable" role="table" aria-label="Rubric questions and results">
+            <div className="rubricHeader" role="row">
+              <span>Category</span>
+              <span>Question / parameter</span>
+              <span>Result</span>
+              <span>Confidence</span>
+              <span>Reasoning</span>
+            </div>
+            {attributes.map((item, index) => {
+              const attribute = asRecord(item) ?? {};
+              return (
+                <div className="rubricRow" role="row" key={`${String(attribute.question ?? "question")}-${index}`}>
+                  <span>{String(attribute.category ?? "—")}</span>
+                  <span>
+                    <strong>{String(attribute.description ?? "—")}</strong>
+                    <small>{String(attribute.question ?? "—")}</small>
+                  </span>
+                  <span className={`answerPill ${String(attribute.answer ?? "").toLowerCase()}`}>{String(attribute.answer ?? "—")}</span>
+                  <span>{formatPercent(attribute.confidence)}</span>
+                  <span>{String(attribute.reasoning ?? "—")}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyDetail message="No rubric attributes were returned." />
+        )}
+      </DetailSection>
+    </div>
+  );
+}
+
+function JudgeDetails({ judge }: { judge: Record<string, unknown> | undefined }) {
+  if (!judge) return <EmptyDetail message="LLM judge evaluation was not run for this asset." />;
+  const criteria = [
+    ["Visual quality", "visual_quality"],
+    ["Spatial coherence", "spatial_coherence"],
+    ["Style fidelity", "style_fidelity"],
+    ["Aesthetic appeal", "aesthetic_appeal"],
+    ["Text legibility", "text_legibility"]
+  ] as const;
+  return (
+    <div className="detailStack">
+      <dl className="detailGrid">
+        <DetailItem label="Average score" value={typeof judge.average_score === "number" ? `${judge.average_score.toFixed(1)} / 5` : "—"} />
+      </dl>
+      <DetailSection title="Criteria">
+        <div className="judgeList">
+          {criteria.map(([label, key]) => {
+            const criterion = asRecord(judge[key]);
+            if (!criterion) return null;
+            return (
+              <article className="judgeItem" key={key}>
+                <div>
+                  <strong>{label}</strong>
+                  <span>{typeof criterion.score === "number" ? `${criterion.score} / 5` : "—"}</span>
+                </div>
+                <p>{String(criterion.justification ?? "—")}</p>
+              </article>
+            );
+          })}
+        </div>
+      </DetailSection>
+      <DetailSection title="Overall impression">
+        <p className="detailText">{String(judge.overall_impression ?? "—")}</p>
+      </DetailSection>
+    </div>
+  );
+}
+
+function DecisionDetails({ report }: { report: Record<string, unknown> }) {
+  return (
+    <div className="detailStack">
+      <dl className="detailGrid">
+        <DetailItem label="Decision" value={String(report.threshold_decision ?? "—")} />
+        <DetailItem label="Composite score" value={formatPercent(report.composite_score)} />
+      </dl>
+      <DetailSection title="Reasons">
+        <ReasonList reasons={readStringArray(report.threshold_reasons)} />
+      </DetailSection>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="detailSection">
+      <h3>{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function ReasonList({ reasons }: { reasons: string[] }) {
+  if (!reasons.length) return <EmptyDetail message="No threshold reasons were returned." />;
+  return (
+    <ul className="reasonList">
+      {reasons.map((reason) => (
+        <li key={reason}>{reason}</li>
+      ))}
+    </ul>
+  );
+}
+
+function KeyValueList({ value }: { value: Record<string, unknown> | undefined }) {
+  if (!value || !Object.keys(value).length) return <EmptyDetail message="No details were returned." />;
+  return (
+    <dl className="keyValueList">
+      {Object.entries(value).map(([key, item]) => (
+        <div key={key}>
+          <dt>{humanizeKey(key)}</dt>
+          <dd>{formatDetailValue(item)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function EmptyDetail({ message }: { message: string }) {
+  return <p className="emptyDetail">{message}</p>;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function formatPercent(value: unknown): string {
+  return typeof value === "number" ? `${Math.round(value * 100)}%` : "—";
+}
+
+function formatDetailValue(value: unknown): string {
+  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(3);
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (value === null || value === undefined) return "—";
+  return JSON.stringify(value);
+}
+
+function humanizeKey(key: string): string {
+  return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

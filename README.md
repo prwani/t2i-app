@@ -4,6 +4,8 @@ T2I App is an Azure Foundry image generation and evaluation project. It provides
 
 The current implementation focuses on image workflows. Video generation is intentionally deferred until video model access is available.
 
+Supported image deployments include `gpt-image-2`, `MAI-Image-2`, `MAI-Image-2e`, `MAI-Image-2.5-Flash`, and `MAI-Image-2.5`. Use `MAI-Image-2e` as the default for most generation-only scenarios, and switch to `gpt-image-2` for image-edit/source-image workflows.
+
 ## Get started locally
 
 Create a Python 3.11 environment, install the SDK with API and app dependencies, and copy the environment template:
@@ -15,7 +17,7 @@ uv pip install -e "packages/t2i_core[dev,app,api]"
 cp .env.example .env
 ```
 
-Update `.env` with your Azure Foundry, Azure OpenAI, Azure AI Vision, and deployment settings. Local authentication uses Azure AD:
+Update `.env` with your Azure Foundry, Azure OpenAI, Azure AI Vision, and deployment settings, including the MAI 2.5 deployment variables from `.env.example` when available. Local authentication uses Azure AD:
 
 ```bash
 az login

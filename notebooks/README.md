@@ -20,6 +20,7 @@ Required variables include:
 - `AZURE_VISION_ENDPOINT`
 - `FOUNDRY_PROJECT_ENDPOINT` when your MAI service endpoint cannot be inferred from Azure OpenAI
 - `MAI_IMAGE_2E_DEPLOYMENT` for the default efficient MAI model
+- `MAI_IMAGE_2_5_FLASH_DEPLOYMENT` and `MAI_IMAGE_2_5_DEPLOYMENT` for the MAI 2.5 models
 - `GPT_IMAGE_2_DEPLOYMENT` for GPT image generation and edits
 - `EVAL_DECOMPOSER_DEPLOYMENT`, `EVAL_RUBRIC_DEPLOYMENT`, `EVAL_JUDGE_DEPLOYMENT` for evaluation/prompt improvement
 

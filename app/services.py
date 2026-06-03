@@ -23,7 +23,13 @@ from t2i_core.scenarios import (
 from t2i_core.types import EditResult, EvaluationReport, GenerationResult
 
 
-ImageModel = Literal["gpt-image-2", "MAI-Image-2", "MAI-Image-2e"]
+ImageModel = Literal[
+    "gpt-image-2",
+    "MAI-Image-2",
+    "MAI-Image-2e",
+    "MAI-Image-2.5-Flash",
+    "MAI-Image-2.5",
+]
 LayerName = Literal["embedding", "rubric", "judge"]
 
 PROMPT_ENHANCEMENT_INSTRUCTIONS = """You improve prompts for image generation and editing workflows.
@@ -64,6 +70,10 @@ def build_provider(settings: Settings, model: ImageModel) -> ImageProvider:
         return GPTImageProvider(settings)
     if model == "MAI-Image-2e":
         return MAIImageProvider(settings, deployment=settings.mai_image_efficient_deployment)
+    if model == "MAI-Image-2.5-Flash":
+        return MAIImageProvider(settings, deployment=settings.mai_image_25_flash_deployment)
+    if model == "MAI-Image-2.5":
+        return MAIImageProvider(settings, deployment=settings.mai_image_25_deployment)
     return MAIImageProvider(settings, deployment=settings.mai_image_deployment)
 
 

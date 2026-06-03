@@ -70,6 +70,7 @@ async def scenarios() -> list[ScenarioResponse]:
             label=item["label"],
             default_model=item["default_model"],
             forced_model=item["forced_model"],
+            model_options=item["model_options"],
             example_prompts=item["example_prompts"],
             example_extras=item.get("example_extras", []),
             recommended_eval_layers=item["recommended_eval_layers"],  # type: ignore[arg-type]

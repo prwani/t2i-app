@@ -12,6 +12,8 @@ Required:
 - `GPT_IMAGE_2_DEPLOYMENT`
 - `MAI_IMAGE_2_DEPLOYMENT`
 - `MAI_IMAGE_2E_DEPLOYMENT`
+- `MAI_IMAGE_2_5_FLASH_DEPLOYMENT`
+- `MAI_IMAGE_2_5_DEPLOYMENT`
 
 Optional for Azure Container Apps user-assigned managed identity:
 
