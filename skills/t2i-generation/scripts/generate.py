@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from t2i_core import GPTImageProvider, MAIImageProvider, Settings
-from t2i_core.providers.base import ImageProvider
+from t2i_core.providers.base import EditableImageProvider, ImageProvider
 from t2i_core.scenarios import (
     BrandTemplate,
     adapt_aspect_ratios,
@@ -18,6 +18,8 @@ from t2i_core.scenarios import (
     place_product,
 )
 from t2i_core.utils import read_image, write_bytes
+
+EDIT_CAPABLE_MODELS = {"gpt-image-2", "mai-image-2.5-flash", "MAI-Image-2.5-Flash", "mai-image-2.5", "MAI-Image-2.5"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -99,7 +101,7 @@ async def main() -> None:
                 path = write_bytes(output_dir / f"{item.target_format}.png", item.result.image)
                 print(path)
         elif args.scenario == "inpainting":
-            _require_gpt_provider(provider, args.scenario)
+            _require_edit_provider(provider, args.model, args.scenario)
             if not args.image:
                 raise ValueError("--image is required for inpainting")
             results = await inpaint_image(
@@ -122,7 +124,7 @@ async def main() -> None:
             )
             _write_generation_results(results, Path(args.output), Path(args.output_dir))
         elif args.scenario == "product-placement":
-            _require_gpt_provider(provider, args.scenario)
+            _require_edit_provider(provider, args.model, args.scenario)
             if not args.image:
                 raise ValueError("--image is required for product-placement")
             environments = args.environment or [args.prompt]
@@ -154,6 +156,11 @@ def _write_generation_results(results, output: Path, output_dir: Path) -> None:
 def _require_gpt_provider(provider: ImageProvider, scenario: str) -> None:
     if not isinstance(provider, GPTImageProvider):
         raise ValueError(f"{scenario} requires --model gpt-image-2")
+
+
+def _require_edit_provider(provider: ImageProvider, model: str, scenario: str) -> None:
+    if model not in EDIT_CAPABLE_MODELS or not isinstance(provider, EditableImageProvider):
+        raise ValueError(f"{scenario} requires an edit-capable model: gpt-image-2, MAI-Image-2.5-Flash, or MAI-Image-2.5")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ import streamlit as st
 from components.evaluation_report import render_evaluation_report, render_evaluation_summary
 from components.image_gallery import render_gallery
 from services import (
+    EDIT_IMAGE_MODELS,
+    IMAGE_MODELS,
     compose_uploaded_images,
     evaluate_generated_assets,
     generate_aspect_package,
@@ -31,11 +33,20 @@ SCENARIOS = [
     "Product placement",
     "Multi-turn refinement",
 ]
-GPT_ONLY_SCENARIOS = {
+SCENARIO_MODEL_OPTIONS = {
+    "Text-to-image generation": IMAGE_MODELS,
+    "Brand template": IMAGE_MODELS,
+    "Text rendering": IMAGE_MODELS,
+    "Aspect-ratio package": IMAGE_MODELS,
+    "Multi-image composition": ["gpt-image-2"],
+    "Inpainting": EDIT_IMAGE_MODELS,
+    "Product placement": EDIT_IMAGE_MODELS,
+    "Multi-turn refinement": EDIT_IMAGE_MODELS,
+}
+SINGLE_IMAGE_EDIT_SCENARIOS = {"Inpainting", "Product placement", "Multi-turn refinement"}
+COUNT_DISABLED_SCENARIOS = {
     "Multi-image composition",
-    "Inpainting",
-    "Product placement",
-    "Multi-turn refinement",
+    *SINGLE_IMAGE_EDIT_SCENARIOS,
 }
 EXAMPLE_PROMPTS = {
     "Text-to-image generation": {
@@ -258,26 +269,24 @@ with st.sidebar:
         ["Custom", *EXAMPLE_PROMPTS[scenario].keys()],
         help="Choose an example to prefill the scenario inputs.",
     )
-    model_disabled = scenario in GPT_ONLY_SCENARIOS
+    model_options = SCENARIO_MODEL_OPTIONS[scenario]
+    model_disabled = len(model_options) == 1
     model = st.selectbox(
         "Model",
-        [
-            "gpt-image-2",
-            "MAI-Image-2",
-            "MAI-Image-2e",
-            "MAI-Image-2.5-Flash",
-            "MAI-Image-2.5",
-        ],
-        index=0 if model_disabled else 2,
+        model_options,
+        index=0,
         disabled=model_disabled,
-        help="MAI-Image-2e is the default for generation-only scenarios. MAI-Image-2.5 and MAI-Image-2.5-Flash are also supported. Editing scenarios require GPT-Image-2.",
+        help=(
+            "Model choices are filtered by scenario capability. "
+            "MAI-Image-2.5 and MAI-Image-2.5-Flash are enabled for documented single-image edit workflows."
+        ),
     )
     if model_disabled:
         model = "gpt-image-2"
-        st.info("This scenario requires GPT-Image-2.")
+        st.info("This workflow is currently GPT-Image-2 only because it requires multi-image editing.")
     quality = st.selectbox("Quality", ["low", "medium", "high"], index=2)
     size = st.selectbox("Size", ["1024x1024", "1536x1024", "1024x1536"])
-    count = st.slider("Images", 1, 4, 1, disabled=scenario in GPT_ONLY_SCENARIOS)
+    count = st.slider("Images", 1, 4, 1, disabled=scenario in COUNT_DISABLED_SCENARIOS)
 
 assets_key = f"generated_assets::{scenario}"
 eval_layers_key = f"eval_layers::{scenario}"
@@ -544,6 +553,7 @@ if st.button("Generate asset", type="primary", disabled=bool(disabled_reason)):
                     compose_uploaded_images(
                         composition_images,
                         prompt,
+                        model,
                         size=size,
                         quality=quality,
                     )
@@ -559,6 +569,7 @@ if st.button("Generate asset", type="primary", disabled=bool(disabled_reason)):
                     inpaint_uploaded_image(
                         source_image,
                         prompt,
+                        model,
                         mask=mask_image,
                         size=size,
                         quality=quality,
@@ -570,6 +581,7 @@ if st.button("Generate asset", type="primary", disabled=bool(disabled_reason)):
                     place_product_assets(
                         product_image,
                         _non_empty_lines(environment_text),
+                        model,
                         size=size,
                         quality=quality,
                     )
@@ -579,6 +591,7 @@ if st.button("Generate asset", type="primary", disabled=bool(disabled_reason)):
                     refine_image_assets(
                         prompt,
                         _non_empty_lines(refinement_text),
+                        model,
                         size=size,
                         quality=quality,
                     )

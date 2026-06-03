@@ -31,6 +31,13 @@ def test_scenarios_include_frontend_metadata() -> None:
     assert "MAI-Image-2.5-Flash" in text_to_image["model_options"]
     assert "MAI-Image-2.5" in text_to_image["model_options"]
     assert text_to_image["example_prompts"]
+    for scenario_id in ["inpainting", "product-placement", "multi-turn-refinement"]:
+        edit_scenario = next(scenario for scenario in scenarios if scenario["id"] == scenario_id)
+        assert edit_scenario["forced_model"] is None
+        assert edit_scenario["model_options"] == ["gpt-image-2", "MAI-Image-2.5-Flash", "MAI-Image-2.5"]
+    composition = next(scenario for scenario in scenarios if scenario["id"] == "multi-image-composition")
+    assert composition["forced_model"] == "gpt-image-2"
+    assert composition["model_options"] == ["gpt-image-2"]
 
 
 def test_generation_returns_async_ready_job_shape(monkeypatch) -> None:
@@ -61,6 +68,51 @@ def test_generation_returns_async_ready_job_shape(monkeypatch) -> None:
     assert payload["status"] == "succeeded"
     assert payload["error"] is None
     assert payload["assets"][0]["url"].startswith("/assets/generated/")
+
+
+def test_inpainting_honors_selected_edit_model(monkeypatch) -> None:
+    async def fake_inpaint_uploaded_image(
+        image: bytes,
+        prompt: str,
+        model: str,
+        *,
+        mask: bytes | None,
+        size: str,
+        quality: str,
+    ):
+        assert image == b"source"
+        assert mask == b"mask"
+        assert model == "MAI-Image-2.5-Flash"
+        return [
+            GeneratedAsset(
+                name="edited.png",
+                result=GenerationResult(
+                    image=b"image-bytes",
+                    prompt=prompt,
+                    model=model,
+                    size=size,
+                    quality=quality,
+                ),
+            )
+        ]
+
+    monkeypatch.setattr("api.main.services.inpaint_uploaded_image", fake_inpaint_uploaded_image)
+    source = base64.b64encode(b"source").decode("ascii")
+    mask = base64.b64encode(b"mask").decode("ascii")
+
+    response = client.post(
+        "/api/generations",
+        json={
+            "scenario": "inpainting",
+            "model": "MAI-Image-2.5-Flash",
+            "prompt": "replace the background",
+            "source_images": [{"data": source, "name": "source.png"}],
+            "mask": {"data": mask, "name": "mask.png"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "succeeded"
 
 
 def test_evaluation_accepts_external_base64_asset(monkeypatch) -> None:

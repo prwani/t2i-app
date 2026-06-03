@@ -29,7 +29,7 @@ Configure `.env` with Azure Foundry endpoints and deployment names. Authenticati
 
 ## Model guide
 
-- `gpt-image-2`: image generation plus editing, inpainting, and composition.
+- `gpt-image-2`: image generation plus editing, inpainting, and multi-image composition.
 - `mai-image-2`: Foundry MAI image generation.
 - `mai-image-2e`: efficient Foundry MAI image generation.
 
@@ -57,5 +57,5 @@ images = await provider.generate("A clean product hero image on a blue backgroun
 
 - Keep generated images out of git.
 - Use `quality=low` for smoke tests.
-- Use GPT image editing for source-image workflows.
+- Use `gpt-image-2`, `MAI-Image-2.5-Flash`, or `MAI-Image-2.5` for single-image edit workflows. Use `gpt-image-2` for multi-image composition.
 - Use MAI providers for text-to-image generation only.

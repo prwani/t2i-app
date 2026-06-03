@@ -8,12 +8,12 @@ Image scenarios live under `t2i_core.scenarios`. They are thin orchestration hel
 | --- | --- | --- |
 | Text-to-image generation | Provider `generate()` | GPT image or MAI image |
 | Brand template | `generate_brand_asset()` | GPT image or MAI image |
-| Text rendering | `generate_text_rendering()` | GPT image preferred |
+| Text rendering | `generate_text_rendering()` | MAI-Image-2.5 or GPT image |
 | Aspect ratio adaptation | `adapt_aspect_ratios()` | GPT image or MAI image |
-| Multi-image composition | `compose_images()` | GPT image |
-| Multi-turn refinement | `refine_image_chain()` | GPT image |
-| Inpainting | `inpaint_image()` | GPT image |
-| Product placement | `place_product()` | GPT image |
+| Multi-image composition | `compose_images()` | GPT image in this app |
+| Multi-turn refinement | `refine_image_chain()` | GPT image, MAI-Image-2.5-Flash, or MAI-Image-2.5 |
+| Inpainting | `inpaint_image()` | GPT image, MAI-Image-2.5-Flash, or MAI-Image-2.5 |
+| Product placement | `place_product()` | GPT image, MAI-Image-2.5-Flash, or MAI-Image-2.5 |
 | Batch variations and ranking | `generate_ranked_variations()` | GPT image plus evaluation pipeline |
 
 ## Size presets
@@ -28,6 +28,6 @@ Format helpers map common targets such as `instagram_square`, `instagram_story`,
 
 ## Notes
 
-- Editing workflows require `gpt-image-2`.
-- MAI image providers are generation-only.
+- The app filters model choices per scenario. Generation-only workflows can use all supported image deployments.
+- Single-image edit workflows can use `gpt-image-2`, `MAI-Image-2.5-Flash`, or `MAI-Image-2.5`. Multi-image composition remains `gpt-image-2` only because the documented MAI image edits API accepts one source image.
 - Batch ranking can be expensive because it evaluates every generated variation.

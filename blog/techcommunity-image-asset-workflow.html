@@ -106,7 +106,7 @@
       A single text-to-image call can create a useful draft, but production asset creation usually needs more structure:
     </p>
     <ul>
-      <li><strong>Model choice:</strong> use MAI image deployments for efficient text-to-image generation, and GPT image deployments when editing, inpainting, composition, or product placement are required.</li>
+      <li><strong>Model choice:</strong> use MAI image deployments, including MAI-Image-2.5 and MAI-Image-2.5-Flash, for text-to-image generation and single-image editing workflows. Keep GPT image available for editing and for multi-image composition.</li>
       <li><strong>Scenario guidance:</strong> apply repeatable prompt patterns for brand templates, text rendering, aspect-ratio adaptation, multi-turn refinement, and product placement.</li>
       <li><strong>Objective review:</strong> evaluate every candidate with the same prompt-adherence and quality rubric instead of relying only on manual inspection.</li>
       <li><strong>Deployment readiness:</strong> keep local experimentation and Azure Container Apps deployment on the same configuration model.</li>
@@ -160,7 +160,7 @@ Azure AI Foundry, Azure OpenAI, Azure AI Vision</code></pre>
         </tr>
         <tr>
           <td>Text rendering</td>
-          <td>GPT image preferred</td>
+          <td>MAI-Image-2.5 or GPT image</td>
           <td>Generate assets where readable text matters.</td>
         </tr>
         <tr>
@@ -169,9 +169,14 @@ Azure AI Foundry, Azure OpenAI, Azure AI Vision</code></pre>
           <td>Create channel-ready sizes such as square, story, banner, hero, or mobile formats.</td>
         </tr>
         <tr>
-          <td>Composition, inpainting, product placement, refinement</td>
+          <td>Inpainting, product placement, refinement</td>
+          <td>GPT image, MAI-Image-2.5-Flash, or MAI-Image-2.5</td>
+          <td>Use one source image, optional masks, or previous outputs to create controlled edits.</td>
+        </tr>
+        <tr>
+          <td>Multi-image composition</td>
           <td>GPT image</td>
-          <td>Use source images, masks, or previous outputs to create controlled edits.</td>
+          <td>Combine two or more source images into a new controlled asset.</td>
         </tr>
         <tr>
           <td>Batch variations and ranking</td>
@@ -212,7 +217,7 @@ Azure AI Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       <li>Azure CLI for local Microsoft Entra authentication.</li>
       <li>Access to Azure AI Foundry or Azure OpenAI image deployments.</li>
       <li>Azure AI Vision endpoint for embedding-based evaluation.</li>
-      <li>Deployment names for GPT image, MAI image, and evaluation model deployments.</li>
+      <li>Deployment names for GPT image, MAI image, MAI 2.5 image, and evaluation model deployments.</li>
       <li>Optional: Azure Container Registry and Azure Container Apps for deployment.</li>
     </ul>
 
@@ -234,8 +239,10 @@ cp .env.example .env</code></pre>
 AZURE_OPENAI_ENDPOINT=https://&lt;resource&gt;.openai.azure.com
 AZURE_VISION_ENDPOINT=https://&lt;resource&gt;.cognitiveservices.azure.com
 GPT_IMAGE_2_DEPLOYMENT=gpt-image-2
-MAI_IMAGE_2_DEPLOYMENT=mai-image-2
-MAI_IMAGE_2E_DEPLOYMENT=mai-image-2-efficient
+MAI_IMAGE_2_DEPLOYMENT=MAI-Image-2
+MAI_IMAGE_2E_DEPLOYMENT=MAI-Image-2e
+MAI_IMAGE_2_5_FLASH_DEPLOYMENT=MAI-Image-2.5-Flash
+MAI_IMAGE_2_5_DEPLOYMENT=MAI-Image-2.5
 EVAL_DECOMPOSER_DEPLOYMENT=o4-mini
 EVAL_RUBRIC_DEPLOYMENT=o4-mini
 EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
@@ -274,10 +281,10 @@ EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
       A practical workflow for a campaign asset is:
     </p>
     <ol>
-      <li>Select a generation-only scenario and start with <code>MAI-Image-2e</code> for efficient exploration.</li>
+      <li>Select a generation-only scenario and start with <code>MAI-Image-2e</code> for efficient exploration, <code>MAI-Image-2.5-Flash</code> for faster production runs, or <code>MAI-Image-2.5</code> when maximum fidelity is the priority.</li>
       <li>Use prompt improvement to add scene structure, subject details, lighting, constraints, and brand context.</li>
       <li>Generate several candidates.</li>
-      <li>Switch to GPT image for workflows that require edits, source images, masks, product placement, or multi-turn refinement.</li>
+      <li>Use the scenario-filtered model selector: single-image edit workflows can use GPT image, MAI-Image-2.5-Flash, or MAI-Image-2.5, while multi-image composition remains GPT image only.</li>
       <li>Evaluate and compare candidates before exporting.</li>
     </ol>
 
@@ -291,7 +298,9 @@ EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
 settings = Settings()
 
 gpt_provider = GPTImageProvider(settings)
-mai_provider = MAIImageProvider(settings, deployment=settings.mai_image_efficient_deployment)</code></pre>
+mai_provider = MAIImageProvider(settings, deployment=settings.mai_image_efficient_deployment)
+mai25_flash_provider = MAIImageProvider(settings, deployment=settings.mai_image_25_flash_deployment)
+mai25_provider = MAIImageProvider(settings, deployment=settings.mai_image_25_deployment)</code></pre>
 
     <p>
       Recommended notebook sections include:

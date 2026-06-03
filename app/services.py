@@ -8,7 +8,7 @@ from typing import Literal
 from t2i_core import EvaluationPipeline, GPTImageProvider, MAIImageProvider, Settings
 from t2i_core.clients import get_openai_client
 from t2i_core.evaluation.openai_json import create_json_chat_completion
-from t2i_core.providers.base import ImageProvider
+from t2i_core.providers.base import EditableImageProvider, ImageProvider
 from t2i_core.scenarios import (
     BrandTemplate,
     adapt_aspect_ratios,
@@ -31,6 +31,19 @@ ImageModel = Literal[
     "MAI-Image-2.5",
 ]
 LayerName = Literal["embedding", "rubric", "judge"]
+
+IMAGE_MODELS: list[ImageModel] = [
+    "MAI-Image-2e",
+    "MAI-Image-2.5-Flash",
+    "MAI-Image-2.5",
+    "MAI-Image-2",
+    "gpt-image-2",
+]
+EDIT_IMAGE_MODELS: list[ImageModel] = [
+    "gpt-image-2",
+    "MAI-Image-2.5-Flash",
+    "MAI-Image-2.5",
+]
 
 PROMPT_ENHANCEMENT_INSTRUCTIONS = """You improve prompts for image generation and editing workflows.
 Apply production image-prompting best practices:
@@ -75,6 +88,15 @@ def build_provider(settings: Settings, model: ImageModel) -> ImageProvider:
     if model == "MAI-Image-2.5":
         return MAIImageProvider(settings, deployment=settings.mai_image_25_deployment)
     return MAIImageProvider(settings, deployment=settings.mai_image_deployment)
+
+
+def build_edit_provider(settings: Settings, model: ImageModel) -> EditableImageProvider:
+    if model not in EDIT_IMAGE_MODELS:
+        raise ValueError(f"{model} does not support source-image edit workflows")
+    provider = build_provider(settings, model)
+    if not isinstance(provider, EditableImageProvider):
+        raise ValueError(f"{model} does not support source-image edit workflows")
+    return provider
 
 
 async def improve_prompt_with_ai(prompt: str, scenario: str) -> str:
@@ -221,12 +243,13 @@ async def generate_text_rendering_assets(
 async def compose_uploaded_images(
     images: list[bytes],
     prompt: str,
+    model: ImageModel = "gpt-image-2",
     *,
     size: str,
     quality: str,
 ) -> list[GeneratedAsset]:
     settings = Settings()
-    provider = GPTImageProvider(settings)
+    provider = build_edit_provider(settings, model)
     try:
         results = await compose_images(provider, images, prompt, size=size, quality=quality)
         return [
@@ -234,19 +257,20 @@ async def compose_uploaded_images(
             for index, result in enumerate(results, start=1)
         ]
     finally:
-        await provider.client.close()
+        await close_provider(provider)
 
 
 async def inpaint_uploaded_image(
     image: bytes,
     prompt: str,
+    model: ImageModel = "gpt-image-2",
     *,
     mask: bytes | None,
     size: str,
     quality: str,
 ) -> list[GeneratedAsset]:
     settings = Settings()
-    provider = GPTImageProvider(settings)
+    provider = build_edit_provider(settings, model)
     try:
         results = await inpaint_image(
             provider,
@@ -261,18 +285,19 @@ async def inpaint_uploaded_image(
             for index, result in enumerate(results, start=1)
         ]
     finally:
-        await provider.client.close()
+        await close_provider(provider)
 
 
 async def place_product_assets(
     product_image: bytes,
     environments: list[str],
+    model: ImageModel = "gpt-image-2",
     *,
     size: str,
     quality: str,
 ) -> list[GeneratedAsset]:
     settings = Settings()
-    provider = GPTImageProvider(settings)
+    provider = build_edit_provider(settings, model)
     try:
         results = await place_product(
             provider,
@@ -290,18 +315,19 @@ async def place_product_assets(
             for index, result in enumerate(results, start=1)
         ]
     finally:
-        await provider.client.close()
+        await close_provider(provider)
 
 
 async def refine_image_assets(
     initial_prompt: str,
     instructions: list[str],
+    model: ImageModel = "gpt-image-2",
     *,
     size: str,
     quality: str,
 ) -> list[GeneratedAsset]:
     settings = Settings()
-    provider = GPTImageProvider(settings)
+    provider = build_edit_provider(settings, model)
     try:
         chain = await refine_image_chain(
             provider,
@@ -327,7 +353,7 @@ async def refine_image_assets(
         )
         return assets
     finally:
-        await provider.client.close()
+        await close_provider(provider)
 
 
 async def evaluate_image(

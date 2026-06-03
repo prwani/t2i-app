@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL, Scenario, api } from "../lib/api";
 
+const generationModels = ["MAI-Image-2e", "MAI-Image-2.5-Flash", "MAI-Image-2.5", "MAI-Image-2", "gpt-image-2"];
+
 const fallbackScenarios: Scenario[] = [
   {
     id: "product-launch",
     name: "Product launch",
     description: "Hero visuals, launch banners, and social-ready concepts for a new product.",
-    defaultModel: "gpt-image-1",
-    modelOptions: ["gpt-image-1"],
+    defaultModel: "MAI-Image-2e",
+    modelOptions: generationModels,
     defaultPrompt: "Create a premium product launch hero image for a sleek smart speaker on a warm gradient studio background.",
     examples: [],
     exampleExtras: []
@@ -19,8 +21,8 @@ const fallbackScenarios: Scenario[] = [
     id: "seasonal-campaign",
     name: "Seasonal campaign",
     description: "High-converting campaign artwork for holidays, promos, and limited runs.",
-    defaultModel: "gpt-image-1",
-    modelOptions: ["gpt-image-1"],
+    defaultModel: "MAI-Image-2e",
+    modelOptions: generationModels,
     defaultPrompt: "Design a festive but modern winter campaign image for a coffee brand, cozy lighting, premium packaging.",
     examples: [],
     exampleExtras: []
@@ -29,8 +31,8 @@ const fallbackScenarios: Scenario[] = [
     id: "brand-refresh",
     name: "Brand refresh",
     description: "Explore new visual systems while preserving brand cues and audience fit.",
-    defaultModel: "gpt-image-1",
-    modelOptions: ["gpt-image-1"],
+    defaultModel: "MAI-Image-2e",
+    modelOptions: generationModels,
     defaultPrompt: "Create three visual directions for a modern wellness brand refresh using calming gradients and natural textures.",
     examples: [],
     exampleExtras: []

@@ -4,7 +4,7 @@ T2I App is an Azure Foundry image generation and evaluation project. It provides
 
 The current implementation focuses on image workflows. Video generation is intentionally deferred until video model access is available.
 
-Supported image deployments include `gpt-image-2`, `MAI-Image-2`, `MAI-Image-2e`, `MAI-Image-2.5-Flash`, and `MAI-Image-2.5`. Use `MAI-Image-2e` as the default for most generation-only scenarios, and switch to `gpt-image-2` for image-edit/source-image workflows.
+Supported image deployments include `gpt-image-2`, `MAI-Image-2`, `MAI-Image-2e`, `MAI-Image-2.5-Flash`, and `MAI-Image-2.5`. Use `MAI-Image-2e` as the default for most generation-only scenarios, `MAI-Image-2.5-Flash` when speed/cost matters, and `MAI-Image-2.5` when maximum fidelity is the priority. Single-image edit workflows such as inpainting, product placement, and multi-turn refinement can use `gpt-image-2`, `MAI-Image-2.5-Flash`, or `MAI-Image-2.5`; multi-image composition remains `gpt-image-2` only because the documented MAI edit API accepts one source image.
 
 ## Get started locally
 

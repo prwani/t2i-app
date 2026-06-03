@@ -63,7 +63,7 @@ export function normalizeScenario(raw: Record<string, unknown>): Scenario {
     id,
     name: String(pick(raw.name ?? raw.label ?? raw.title, id)),
     description: String(pick(raw.description, "Create polished campaign-ready assets.")),
-    defaultModel: String(pick(raw.defaultModel ?? raw.default_model ?? raw.model, "gpt-image-1")),
+    defaultModel: String(pick(raw.defaultModel ?? raw.default_model ?? raw.model, "MAI-Image-2e")),
     forcedModel: (raw.forcedModel ?? raw.forced_model ?? null) as string | null,
     modelOptions: Array.isArray(raw.modelOptions)
       ? raw.modelOptions.map(String)

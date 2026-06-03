@@ -17,7 +17,7 @@ streamlit run app/Home.py
   - Compare
   - Batch Rank
 
-Asset Creation Workflow is the app homepage. It defaults to `MAI-Image-2e` for generation-only scenarios. Scenarios that require image editing or source-image inputs automatically use `gpt-image-2`.
+Asset Creation Workflow is the app homepage. It defaults to `MAI-Image-2e` for generation-only scenarios. The model selector is filtered per scenario: generation-only workflows can use all supported image deployments, single-image edit workflows can use `gpt-image-2`, `MAI-Image-2.5-Flash`, or `MAI-Image-2.5`, and multi-image composition remains `gpt-image-2` only.
 
 The Asset Creation Workflow page provides per-scenario example prompts. Scenarios with additional inputs also prefill useful defaults, such as brand colors, multi-line rendered text, aspect-ratio formats, product placement environments, and refinement instructions. Multi-image composition, inpainting, and product placement examples include GPT-generated local sample input images that users can try before uploading their own references.
 

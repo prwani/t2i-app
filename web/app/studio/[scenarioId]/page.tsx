@@ -5,10 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { API_BASE_URL, Asset, Job, Scenario, api, normalizeAsset, normalizeJob } from "../../../lib/api";
 
 /* ── fallback scenarios (same as home) ────────────────────────── */
+const generationModels = ["MAI-Image-2e", "MAI-Image-2.5-Flash", "MAI-Image-2.5", "MAI-Image-2", "gpt-image-2"];
+
 const fallbackScenarios: Scenario[] = [
-  { id: "product-launch", name: "Product launch", description: "Hero visuals, launch banners, and social-ready concepts.", defaultModel: "gpt-image-1", modelOptions: ["gpt-image-1"], defaultPrompt: "Create a premium product launch hero image for a sleek smart speaker on a warm gradient studio background.", examples: ["Luxury skincare bottle on marble, soft shadows, editorial campaign style", "Outdoor adventure backpack floating over topographic lines, bold retail banner", "Minimal fintech debit card launch visual with glassmorphism and confident blue lighting"], exampleExtras: [] },
-  { id: "seasonal-campaign", name: "Seasonal campaign", description: "High-converting campaign artwork for holidays, promos, and limited runs.", defaultModel: "gpt-image-1", modelOptions: ["gpt-image-1"], defaultPrompt: "Design a festive but modern winter campaign image for a coffee brand, cozy lighting, premium packaging.", examples: ["Back-to-school laptop bundle with energetic paper-cut shapes", "Summer travel sale poster with sunlit luggage and tropical gradients", "Black Friday electronics campaign, cinematic product wall, dramatic contrast"], exampleExtras: [] },
-  { id: "brand-refresh", name: "Brand refresh", description: "Explore new visual systems while preserving brand cues and audience fit.", defaultModel: "gpt-image-1", modelOptions: ["gpt-image-1"], defaultPrompt: "Create three visual directions for a modern wellness brand refresh using calming gradients and natural textures.", examples: ["Premium pet food brand refresh with playful typography and natural ingredients", "B2B SaaS homepage illustration style: trustworthy, modern, human", "Boutique hotel visual identity mood image with art deco cues"], exampleExtras: [] }
+  { id: "product-launch", name: "Product launch", description: "Hero visuals, launch banners, and social-ready concepts.", defaultModel: "MAI-Image-2e", modelOptions: generationModels, defaultPrompt: "Create a premium product launch hero image for a sleek smart speaker on a warm gradient studio background.", examples: ["Luxury skincare bottle on marble, soft shadows, editorial campaign style", "Outdoor adventure backpack floating over topographic lines, bold retail banner", "Minimal fintech debit card launch visual with glassmorphism and confident blue lighting"], exampleExtras: [] },
+  { id: "seasonal-campaign", name: "Seasonal campaign", description: "High-converting campaign artwork for holidays, promos, and limited runs.", defaultModel: "MAI-Image-2e", modelOptions: generationModels, defaultPrompt: "Design a festive but modern winter campaign image for a coffee brand, cozy lighting, premium packaging.", examples: ["Back-to-school laptop bundle with energetic paper-cut shapes", "Summer travel sale poster with sunlit luggage and tropical gradients", "Black Friday electronics campaign, cinematic product wall, dramatic contrast"], exampleExtras: [] },
+  { id: "brand-refresh", name: "Brand refresh", description: "Explore new visual systems while preserving brand cues and audience fit.", defaultModel: "MAI-Image-2e", modelOptions: generationModels, defaultPrompt: "Create three visual directions for a modern wellness brand refresh using calming gradients and natural textures.", examples: ["Premium pet food brand refresh with playful typography and natural ingredients", "B2B SaaS homepage illustration style: trustworthy, modern, human", "Boutique hotel visual identity mood image with art deco cues"], exampleExtras: [] }
 ];
 
 const statusCopy: Record<string, string> = { queued: "Queued", running: "Generating…", succeeded: "Ready", completed: "Ready", failed: "Needs attention" };
@@ -27,7 +29,7 @@ export default function StudioPage() {
   /* ── data state ─────────────────────────────────────────────── */
   const [scenarios, setScenarios] = useState<Scenario[]>(fallbackScenarios);
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState("gpt-image-1");
+  const [model, setModel] = useState("MAI-Image-2e");
   const [assetCount, setAssetCount] = useState(4);
   const [size, setSize] = useState("1024x1024");
   const [style, setStyle] = useState("Premium editorial");

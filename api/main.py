@@ -211,6 +211,7 @@ async def _run_generation(request: GenerationRequest) -> list[GeneratedAsset]:
         return await services.compose_uploaded_images(
             images,
             request.prompt,
+            model,  # type: ignore[arg-type]
             size=request.size,
             quality=request.quality,
         )
@@ -220,6 +221,7 @@ async def _run_generation(request: GenerationRequest) -> list[GeneratedAsset]:
         return await services.inpaint_uploaded_image(
             _asset_bytes(request.source_images[0]),
             request.prompt,
+            model,  # type: ignore[arg-type]
             mask=_asset_bytes(request.mask) if request.mask else None,
             size=request.size,
             quality=request.quality,
@@ -235,6 +237,7 @@ async def _run_generation(request: GenerationRequest) -> list[GeneratedAsset]:
         return await services.place_product_assets(
             _asset_bytes(request.source_images[0]),
             environments,
+            model,  # type: ignore[arg-type]
             size=request.size,
             quality=request.quality,
         )
@@ -247,6 +250,7 @@ async def _run_generation(request: GenerationRequest) -> list[GeneratedAsset]:
         return await services.refine_image_assets(
             request.prompt,
             refinements,
+            model,  # type: ignore[arg-type]
             size=request.size,
             quality=request.quality,
         )
