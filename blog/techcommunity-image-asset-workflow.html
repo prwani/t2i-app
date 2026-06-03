@@ -192,14 +192,79 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
 
     <h2>Evaluation and compare workflow</h2>
     <p>
-      Evaluation is built as layers so teams can choose the right cost and latency profile for each step:
+      Evaluation is built as layers so teams can choose the right cost and latency profile for each step. The goal is not to replace human creative review; it is to make the first-pass comparison repeatable, explainable, and consistent across generated candidates.
     </p>
-    <ul>
-      <li><strong>Embedding:</strong> uses Azure AI Vision vectors for broad semantic alignment between the prompt and image.</li>
-      <li><strong>Rubric:</strong> decomposes the prompt into visual attributes and verifies each attribute.</li>
-      <li><strong>Judge:</strong> reviews visual quality, coherence, style, aesthetics, and text legibility when relevant.</li>
-      <li><strong>Pipeline:</strong> combines selected layers into a normalized composite score. Skipped layers are not treated as zeroes.</li>
-    </ul>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>What it measures</th>
+          <th>How to read it</th>
+          <th>Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Embedding similarity</td>
+          <td>Broad semantic alignment between the prompt text and the image, using Azure AI Vision multimodal vectors.</td>
+          <td>A cosine similarity score. It is useful for fast screening, but it is not a percentage and should be calibrated for your asset category.</td>
+          <td>Prompt: "a red backpack on a wooden desk." An image containing a red backpack on a desk should score higher than a beach landscape, even before checking detailed attributes.</td>
+        </tr>
+        <tr>
+          <td>Rubric score</td>
+          <td>Prompt adherence at the attribute level. The app decomposes the prompt into concrete checks and verifies whether each one is present.</td>
+          <td>A 0-1 score where each "yes" counts as 1, each "partial" counts as 0.5, and each "no" counts as 0.</td>
+          <td>If the prompt asks for "a blue ceramic mug, steam rising, on a marble counter" and the image has the mug and counter but no visible steam, the rubric might mark two attributes as yes and one as no, resulting in 0.67.</td>
+        </tr>
+        <tr>
+          <td>Visual quality</td>
+          <td>Whether the image is sharp, clean, artifact-free, and suitable as a production asset.</td>
+          <td>A 1-5 judge score, where 5 means strong production quality and 1 means severe defects.</td>
+          <td>A product photo with crisp edges and no visible distortions may receive 5; a warped product label or noisy background may receive 2.</td>
+        </tr>
+        <tr>
+          <td>Spatial coherence</td>
+          <td>Whether objects, perspective, lighting, hands, reflections, shadows, and composition are physically plausible.</td>
+          <td>A 1-5 judge score focused on scene consistency rather than prompt matching.</td>
+          <td>A handbag correctly resting on a table with consistent shadowing scores higher than one floating above the table or casting an impossible shadow.</td>
+        </tr>
+        <tr>
+          <td>Style fidelity</td>
+          <td>Whether the image follows the requested visual style, such as photorealistic product photography, flat illustration, luxury editorial, or social ad creative.</td>
+          <td>A 1-5 judge score. This is especially useful when comparing variants that all contain the requested objects but differ in brand fit.</td>
+          <td>For "minimal premium skincare ad on a warm beige background," a cluttered neon cyberpunk result may have good objects but low style fidelity.</td>
+        </tr>
+        <tr>
+          <td>Aesthetic appeal</td>
+          <td>Overall creative polish: composition, balance, color harmony, framing, and marketability.</td>
+          <td>A 1-5 judge score that helps rank multiple acceptable candidates.</td>
+          <td>Two images may both satisfy the prompt, but the one with stronger framing, cleaner negative space, and better color contrast should rank higher.</td>
+        </tr>
+        <tr>
+          <td>Text legibility</td>
+          <td>Whether generated text is readable and accurate when the prompt asks for visible text, packaging copy, signage, or labels.</td>
+          <td>An optional 1-5 judge score. It is included only when text is relevant to the prompt.</td>
+          <td>For "a poster that says SUMMER SALE," a clear and correctly spelled headline scores high; misspelled or melted lettering scores low.</td>
+        </tr>
+        <tr>
+          <td>Composite score</td>
+          <td>A normalized summary score across the selected layers.</td>
+          <td>A 0-1 weighted score. If you skip a layer, the active weights are renormalized instead of treating the skipped layer as zero.</td>
+          <td>If only embedding and rubric are selected, the composite ranks candidates using those two signals. If the judge layer is added, quality and aesthetics also influence the final order.</td>
+        </tr>
+        <tr>
+          <td>Decision</td>
+          <td>A workflow recommendation: accept, review, or regenerate.</td>
+          <td>The app compares layer scores and the composite score with configurable thresholds.</td>
+          <td>A candidate with strong visual quality but poor rubric adherence may be marked regenerate because it looks good but missed the requested product, color, or scene requirement.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      A practical pattern is to use embedding similarity for inexpensive early filtering, add rubric scoring when prompt adherence matters, and add the judge layer when visual polish, brand fit, or text legibility affects the final choice. For example, a marketing team generating five product-ad variations can rank all five by composite score, then inspect the per-metric explanations to understand whether the winner was selected because it matched the prompt, looked more polished, or both.
+    </p>
 
     <pre><code class="language-python">report = await EvaluationPipeline(settings).evaluate(
     image_bytes,
