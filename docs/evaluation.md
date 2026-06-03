@@ -31,4 +31,4 @@ Defaults live in `EvaluationThresholds` and should be calibrated for your image 
 
 ## UI behavior
 
-The Streamlit app exposes layer selection. Full evaluation uses Azure Vision plus Azure OpenAI calls, so it has higher latency and cost than embedding-only checks.
+The web app exposes layer selection through the FastAPI backend. Full evaluation uses Azure Vision plus Azure OpenAI calls, so it has higher latency and cost than embedding-only checks.

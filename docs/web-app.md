@@ -9,7 +9,7 @@ From the repository root:
 ```bash
 uv venv --python 3.11 .venv
 source .venv/bin/activate
-uv pip install -e "packages/t2i_core[dev,app,api]"
+uv pip install -e "packages/t2i_core[dev,api]"
 cp .env.example .env
 az login
 ```
@@ -51,4 +51,3 @@ Open `http://localhost:3000`. The frontend uses `NEXT_PUBLIC_API_BASE_URL` and d
 - [Architecture](architecture.md)
 - [Image scenarios](scenarios.md)
 - [Evaluation pipeline](evaluation.md)
-- [Streamlit prototype](streamlit-app.md)

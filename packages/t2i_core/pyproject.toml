@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "t2i-core"
 version = "0.1.0"
-description = "Local SDK for Azure Foundry T2I generation and evaluation."
+description = "Local SDK for Microsoft Foundry T2I generation and evaluation."
 requires-python = ">=3.11"
 dependencies = [
     "azure-identity>=1.17.0",
@@ -23,11 +23,6 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "respx>=0.21",
-]
-app = [
-    "pandas>=2.2",
-    "plotly>=5.20",
-    "streamlit>=1.35",
 ]
 api = [
     "fastapi>=0.115",

@@ -80,7 +80,7 @@ class Settings(BaseSettings):
 
     @property
     def foundry_services_endpoint(self) -> str:
-        """Azure AI Foundry services endpoint used by MAI APIs."""
+        """Microsoft Foundry services endpoint used by MAI APIs."""
 
         if self.foundry_project_endpoint is not None:
             project_endpoint = str(self.foundry_project_endpoint).rstrip("/")

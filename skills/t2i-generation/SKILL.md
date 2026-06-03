@@ -1,7 +1,7 @@
 ---
 name: t2i-generation
 description: |
-  Generate images using Azure Foundry image models through the local t2i_core SDK.
+  Generate images using Microsoft Foundry image models through the local t2i_core SDK.
   Supports image generation, editing, inpainting, composition, text rendering, aspect ratio adaptation,
   brand templates, product placement, and batch variations.
   USE FOR: generate image, create hero image, product photo, brand asset, marketing visual,
@@ -20,12 +20,12 @@ From the repository root:
 ```bash
 uv venv --python 3.11 .venv
 source .venv/bin/activate
-uv pip install -e "packages/t2i_core[app]"
+uv pip install -e "packages/t2i_core"
 az login
 cp .env.example .env
 ```
 
-Configure `.env` with Azure Foundry endpoints and deployment names. Authentication uses Azure AD through `DefaultAzureCredential`; API keys are not required by default.
+Configure `.env` with Microsoft Foundry endpoints and deployment names. Authentication uses Azure AD through `DefaultAzureCredential`; API keys are not required by default.
 
 ## Model guide
 

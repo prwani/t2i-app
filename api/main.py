@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -32,7 +33,7 @@ from app import services
 from app.services import GeneratedAsset
 
 
-GENERATED_DIR = Path(__file__).resolve().parent / "generated_assets"
+GENERATED_DIR = Path(os.environ.get("GENERATED_ASSETS_DIR", "/tmp/t2i-generated-assets"))
 GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 SAMPLE_ASSETS_DIR = Path(__file__).resolve().parent.parent / "app" / "sample_assets"
 

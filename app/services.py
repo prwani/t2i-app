@@ -1,4 +1,4 @@
-"""Shared Streamlit app services."""
+"""Shared application services used by the FastAPI backend."""
 
 import asyncio
 from dataclasses import dataclass
@@ -69,13 +69,13 @@ class GeneratedAsset:
 
 
 def run_async(coro):
-    """Run an async SDK operation from a Streamlit callback."""
+    """Run an async SDK operation from a synchronous caller."""
 
     try:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
-    raise RuntimeError("Streamlit app service cannot run inside an existing event loop")
+    raise RuntimeError("Application service cannot run inside an existing event loop")
 
 
 def build_provider(settings: Settings, model: ImageModel) -> ImageProvider:

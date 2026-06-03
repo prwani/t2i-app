@@ -1,6 +1,6 @@
 # T2I App
 
-T2I App is an Azure Foundry image generation and evaluation project. It provides a Python SDK, a FastAPI backend, a Next.js web experience, agent skills, developer notebooks, and the original Streamlit prototype for generating images, evaluating prompt adherence and quality, comparing outputs, and ranking generated variations.
+T2I App is a Microsoft Foundry image generation and evaluation project. It provides a Python SDK, a FastAPI backend, a Next.js web experience, agent skills, and developer notebooks for generating images, evaluating prompt adherence and quality, comparing outputs, and ranking generated variations.
 
 The current implementation focuses on image workflows. Video generation is intentionally deferred until video model access is available.
 
@@ -8,16 +8,16 @@ Supported image deployments include `gpt-image-2`, `MAI-Image-2`, `MAI-Image-2e`
 
 ## Get started locally
 
-Create a Python 3.11 environment, install the SDK with API and app dependencies, and copy the environment template:
+Create a Python 3.11 environment, install the SDK with API dependencies, and copy the environment template:
 
 ```bash
 uv venv --python 3.11 .venv
 source .venv/bin/activate
-uv pip install -e "packages/t2i_core[dev,app,api]"
+uv pip install -e "packages/t2i_core[dev,api]"
 cp .env.example .env
 ```
 
-Update `.env` with your Azure Foundry, Azure OpenAI, Azure AI Vision, and deployment settings, including the MAI 2.5 deployment variables from `.env.example` when available. Local authentication uses Azure AD:
+Update `.env` with your Microsoft Foundry, Azure OpenAI, Azure AI Vision, and deployment settings, including the MAI 2.5 deployment variables from `.env.example` when available. Local authentication uses Azure AD:
 
 ```bash
 az login
@@ -42,14 +42,6 @@ npm run dev
 
 Open `http://localhost:3000`. The frontend reads `NEXT_PUBLIC_API_BASE_URL` and defaults to `http://localhost:8000`.
 
-### Streamlit prototype
-
-The Streamlit UI is retained as a prototype/legacy experience:
-
-```bash
-streamlit run app/Home.py
-```
-
 ### Developer workflows
 
 - [Developer notebooks](notebooks/README.md) provide executable generation, prompt-improvement, and evaluation workflows.
@@ -57,13 +49,14 @@ streamlit run app/Home.py
 
 ## Get started with Azure deployment
 
-The existing Streamlit app is container-ready for Azure Container Apps with Microsoft Entra ID authentication at ingress and managed identity for Azure Foundry/API access.
+The FastAPI backend is container-ready for Azure Container Apps with Microsoft Entra ID authentication at ingress and managed identity for Microsoft Foundry/API access.
 
-Build and deploy using the guidance in [Azure Container Apps deployment](docs/azure-container-apps.md). At a high level:
+Build and deploy using the guidance in [Azure Container Apps deployment](docs/azure-container-apps.md). Prerequisites are an existing Microsoft Foundry resource/project, model deployments, and a local `.env` file populated with the Foundry, Azure OpenAI, Azure AI Vision, and deployment-name settings. At a high level:
 
 ```bash
-az acr build --registry <acr-name> --image t2i-app:latest .
-az containerapp create --name t2i-app --image <acr-name>.azurecr.io/t2i-app:latest --target-port 8000 --ingress external
+TAG=deploy-$(date +%Y%m%d%H%M%S)
+az acr build --registry <acr-name> --image t2i-app:$TAG .
+az containerapp create --name t2i-app --image <acr-name>.azurecr.io/t2i-app:$TAG --target-port 8000 --ingress external
 ```
 
 After deployment, enable Microsoft Entra authentication on the Container App and grant the managed identity the required Cognitive Services/Foundry roles.
@@ -77,7 +70,6 @@ After deployment, enable Microsoft Entra authentication on the Container App and
 - [SDK](docs/sdk.md)
 - [Image scenarios](docs/scenarios.md)
 - [Evaluation pipeline](docs/evaluation.md)
-- [Streamlit app](docs/streamlit-app.md)
 - [Developer notebooks](notebooks/README.md)
 - [Generation skill](skills/t2i-generation/SKILL.md)
 - [Evaluation skill](skills/t2i-evaluation/SKILL.md)

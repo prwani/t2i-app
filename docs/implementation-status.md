@@ -6,7 +6,7 @@
 - Phase 2: Image providers and image-only scenarios.
 - Phase 3: Prompt decomposer, rubric evaluator, judge evaluator, and evaluation pipeline.
 - Phase 5: Image generation, evaluation, and design asset skills.
-- Phase 6: Streamlit UI with all image scenarios, navigable galleries, and Azure Container Apps deployment assets.
+- Phase 6: FastAPI backend, Next.js UI with image scenarios and evaluation deep dives, and Azure Container Apps deployment assets.
 
 ## Deferred
 
@@ -20,5 +20,5 @@
 - GPT image generation and editing were live-tested.
 - MAI image generation was live-tested.
 - Azure Vision embedding and full evaluation pipeline were live-tested.
-- Streamlit local health endpoint was tested.
+- FastAPI local health endpoint was tested.
 - Docker image build and container health endpoint were tested.

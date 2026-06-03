@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Build an Azure AI Foundry image asset workflow with GPT and MAI image models</title>
+  <title>Build a Microsoft Foundry image asset workflow with GPT and MAI image models</title>
   <style>
     body {
       color: #1f1f1f;
@@ -92,9 +92,9 @@
 </head>
 <body>
   <article>
-    <h1>Build an Azure AI Foundry image asset workflow with GPT and MAI image models</h1>
+    <h1>Build a Microsoft Foundry image asset workflow with GPT and MAI image models</h1>
     <p class="intro">
-      Generative image models are most useful to product, marketing, and design teams when they are part of a repeatable workflow: prompt, generate, compare, evaluate, refine, and package the best assets for the channel where they will be used. This article walks through a practical reference app that brings that loop together with Azure AI Foundry image models, Azure AI Vision, a Python SDK, and a deployable web experience.
+      Generative image models are most useful to product, marketing, and design teams when they are part of a repeatable workflow: prompt, generate, compare, evaluate, refine, and package the best assets for the channel where they will be used. This article walks through a practical reference app that brings that loop together with Microsoft Foundry image models, Azure AI Vision, a Python SDK, and a deployable web experience.
     </p>
 
     <div class="callout">
@@ -117,25 +117,29 @@
       The repository is organized around a reusable Python SDK named <code>t2i_core</code>. The SDK owns provider construction, model calls, scenario orchestration, evaluation, settings, and utility functions. The web UI and agent skills call into the SDK rather than duplicating model-specific logic.
     </p>
 
-    <pre><code>Users / Streamlit UI / Agent skills
-              |
-              v
-          t2i_core SDK
-              |
-              +-- providers: GPT image and MAI image
-              +-- scenarios: asset workflows and editing patterns
-              +-- evaluation: embedding, rubric, judge, pipeline
-              +-- settings: endpoints, deployment names, thresholds
-              |
-              v
-Azure AI Foundry, Azure OpenAI, Azure AI Vision</code></pre>
+    <pre><code>Users
+  |
+  +-- Next.js web UI -- FastAPI backend
+  |
+  +-- Agent skills and developer notebooks
+                         |
+                         v
+                      t2i_core SDK
+                         |
+                         +-- providers: GPT image and MAI image
+                         +-- scenarios: asset workflows and editing patterns
+                         +-- evaluation: embedding, rubric, judge, pipeline
+                         +-- settings: endpoints, deployment names, thresholds
+                         |
+                         v
+Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
 
     <p>
-      The current app uses Streamlit for fast iteration. A common production evolution is to keep <code>t2i_core</code> as the backend domain layer, expose it through a FastAPI service, and build a Next.js front end for richer multi-user experiences, saved asset libraries, approval workflows, and integration with design systems.
+      The current app keeps <code>t2i_core</code> as the backend domain layer, exposes it through a FastAPI service, and uses a Next.js front end for richer multi-user experiences, saved asset libraries, approval workflows, and integration with design systems.
     </p>
 
     <div class="placeholder">
-      Screenshot placeholder: architecture diagram showing Streamlit today and a future Next.js + FastAPI direction using the same SDK.
+      Screenshot placeholder: architecture diagram showing the Next.js + FastAPI app using the same SDK as notebooks and skills.
     </div>
 
     <h2>Image generation capabilities</h2>
@@ -215,20 +219,21 @@ Azure AI Foundry, Azure OpenAI, Azure AI Vision</code></pre>
     <ul>
       <li>Python 3.11.</li>
       <li>Azure CLI for local Microsoft Entra authentication.</li>
-      <li>Access to Azure AI Foundry or Azure OpenAI image deployments.</li>
+      <li>Access to Microsoft Foundry or Azure OpenAI image deployments.</li>
       <li>Azure AI Vision endpoint for embedding-based evaluation.</li>
       <li>Deployment names for GPT image, MAI image, MAI 2.5 image, and evaluation model deployments.</li>
       <li>Optional: Azure Container Registry and Azure Container Apps for deployment.</li>
+      <li>For Azure deployment: an existing Microsoft Foundry resource and project, with deployment details already captured in <code>.env</code>.</li>
     </ul>
 
     <h2>1. Configure the local environment</h2>
     <p>
-      Start with a Python environment and install the local SDK with the app dependencies:
+      Start with a Python environment and install the local SDK with API dependencies:
     </p>
 
     <pre><code class="language-bash">uv venv --python 3.11 .venv
 source .venv/bin/activate
-uv pip install -e "packages/t2i_core[dev,app]"
+uv pip install -e "packages/t2i_core[dev,api]"
 cp .env.example .env</code></pre>
 
     <p>
@@ -255,18 +260,18 @@ EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
 
     <h2>2. Run the web app locally</h2>
     <p>
-      Launch the Streamlit app:
+      Launch the FastAPI backend:
     </p>
 
-    <pre><code class="language-bash">streamlit run app/Home.py</code></pre>
+    <pre><code class="language-bash">uvicorn api.main:app --reload --port 8000</code></pre>
 
     <p>
-      The navigation is organized into two groups:
+      In a second terminal, launch the Next.js frontend:
     </p>
-    <ul>
-      <li><strong>Create:</strong> the asset creation workflow for generation, editing-oriented scenarios, and prompt refinement.</li>
-      <li><strong>Evaluation Utils:</strong> standalone Evaluate, Compare, and Batch Rank pages.</li>
-    </ul>
+
+    <pre><code class="language-bash">cd web
+npm install
+npm run dev</code></pre>
 
     <div class="placeholder">
       Screenshot placeholder: Asset Creation Workflow home page with model selector, scenario selector, prompt box, and generated gallery.
@@ -325,65 +330,174 @@ mai25_provider = MAIImageProvider(settings, deployment=settings.mai_image_25_dep
 
     <h2>6. Deploy to Azure Container Apps</h2>
     <p>
-      The repository includes a container path for Azure Container Apps. Build the image with Azure Container Registry:
+      The repository includes a container path for Azure Container Apps. In the tested deployment, the Microsoft Foundry resource/project already existed, the local <code>.env</code> file held the project endpoint and deployment names, and the Container App used a user-assigned managed identity for model access.
     </p>
 
-    <pre><code class="language-bash">az acr build \
-  --registry &lt;acr-name&gt; \
-  --image t2i-app:latest \
-  .</code></pre>
+    <pre><code class="language-bash">RG=&lt;resource-group&gt;
+LOCATION=&lt;azure-region&gt;
+ACR=&lt;globally-unique-acr-name&gt;
+APP=t2i-app
+ENV=t2i-env
+LAW=t2i-law
+MI=t2i-app-mi</code></pre>
 
     <p>
-      Create or update the Container App with external ingress and environment variables:
+      Create the container registry, user-assigned managed identity, Log Analytics workspace, and Container Apps environment. Creating Log Analytics explicitly avoids ambiguous waits during automatic workspace creation:
     </p>
 
-    <pre><code class="language-bash">az containerapp create \
+    <pre><code class="language-bash">az acr create --name "$ACR" --resource-group "$RG" --location "$LOCATION" --sku Basic
+az identity create --name "$MI" --resource-group "$RG" --location "$LOCATION"
+az monitor log-analytics workspace create --resource-group "$RG" --workspace-name "$LAW" --location "$LOCATION"
+
+LAW_ID=$(az monitor log-analytics workspace show \
+  --resource-group "$RG" --workspace-name "$LAW" --query customerId -o tsv)
+LAW_KEY=$(az monitor log-analytics workspace get-shared-keys \
+  --resource-group "$RG" --workspace-name "$LAW" --query primarySharedKey -o tsv)
+
+az containerapp env create \
+  --name "$ENV" \
+  --resource-group "$RG" \
+  --location "$LOCATION" \
+  --logs-workspace-id "$LAW_ID" \
+  --logs-workspace-key "$LAW_KEY"</code></pre>
+
+    <p>
+      Grant the managed identity ACR pull access and model access. Assign <code>Cognitive Services OpenAI User</code> and <code>Cognitive Services User</code> on the Azure OpenAI or Azure AI Services resource, and also at the Microsoft Foundry project scope if your tenant requires project-level access:
+    </p>
+
+    <pre><code class="language-bash">MI_PRINCIPAL=$(az identity show --name "$MI" --resource-group "$RG" --query principalId -o tsv)
+ACR_ID=$(az acr show --name "$ACR" --resource-group "$RG" --query id -o tsv)
+AI_ACCOUNT_ID=&lt;cognitive-services-or-ai-services-account-resource-id&gt;
+FOUNDRY_PROJECT_ID=&lt;microsoft-foundry-project-resource-id&gt;
+
+az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-principal-type ServicePrincipal --role AcrPull --scope "$ACR_ID"
+az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-principal-type ServicePrincipal --role "Cognitive Services OpenAI User" --scope "$AI_ACCOUNT_ID"
+az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-principal-type ServicePrincipal --role "Cognitive Services User" --scope "$AI_ACCOUNT_ID"
+az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-principal-type ServicePrincipal --role "Cognitive Services OpenAI User" --scope "$FOUNDRY_PROJECT_ID"
+az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-principal-type ServicePrincipal --role "Cognitive Services User" --scope "$FOUNDRY_PROJECT_ID"</code></pre>
+
+    <p>
+      Build with a unique image tag so Azure Container Apps creates a fresh revision instead of reusing a cached <code>latest</code> image:
+    </p>
+
+    <pre><code class="language-bash">TAG=deploy-$(date +%Y%m%d%H%M%S)
+az acr build --registry "$ACR" --image "t2i-app:$TAG" .</code></pre>
+
+    <p>
+      Reuse the local <code>.env</code> file for Container App environment variables and add <code>AZURE_CLIENT_ID</code> for the user-assigned identity:
+    </p>
+
+    <pre><code class="language-bash">MI_ID=$(az identity show --name "$MI" --resource-group "$RG" --query id -o tsv)
+MI_CLIENT_ID=$(az identity show --name "$MI" --resource-group "$RG" --query clientId -o tsv)
+
+python - &lt;&lt;'PY' &gt; /tmp/t2i-env-vars.txt
+from pathlib import Path
+
+keys = [
+    "FOUNDRY_PROJECT_ENDPOINT",
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_VISION_ENDPOINT",
+    "MAI_IMAGE_2_DEPLOYMENT",
+    "MAI_IMAGE_2E_DEPLOYMENT",
+    "MAI_IMAGE_2_5_FLASH_DEPLOYMENT",
+    "MAI_IMAGE_2_5_DEPLOYMENT",
+    "GPT_IMAGE_2_DEPLOYMENT",
+    "EVAL_DECOMPOSER_DEPLOYMENT",
+    "EVAL_RUBRIC_DEPLOYMENT",
+    "EVAL_JUDGE_DEPLOYMENT",
+]
+
+values = {}
+for line in Path(".env").read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    values[key.strip()] = value.strip().strip('"').strip("'")
+
+values["AZURE_CLIENT_ID"] = "__AZURE_CLIENT_ID__"
+for key in [*keys, "AZURE_CLIENT_ID"]:
+    value = values.get(key)
+    if value:
+        print(f"{key}={value}")
+PY
+
+sed -i "s#__AZURE_CLIENT_ID__#$MI_CLIENT_ID#" /tmp/t2i-env-vars.txt</code></pre>
+
+    <p>
+      Create the Container App with external ingress, managed identity for ACR pull, and the same managed identity for model access:
+    </p>
+
+    <pre><code class="language-bash">IMAGE="$ACR.azurecr.io/t2i-app:$TAG"
+
+az containerapp create \
   --name t2i-app \
-  --resource-group &lt;resource-group&gt; \
-  --environment &lt;container-apps-environment&gt; \
-  --image &lt;acr-name&gt;.azurecr.io/t2i-app:latest \
+  --resource-group "$RG" \
+  --environment "$ENV" \
+  --image "$IMAGE" \
   --target-port 8000 \
   --ingress external \
-  --registry-server &lt;acr-name&gt;.azurecr.io \
-  --user-assigned &lt;managed-identity-resource-id&gt; \
-  --env-vars \
-    FOUNDRY_PROJECT_ENDPOINT=&lt;foundry-project-endpoint&gt; \
-    AZURE_OPENAI_ENDPOINT=&lt;openai-endpoint&gt; \
-    AZURE_VISION_ENDPOINT=&lt;vision-endpoint&gt; \
-    AZURE_CLIENT_ID=&lt;managed-identity-client-id&gt;</code></pre>
+  --registry-server "$ACR.azurecr.io" \
+  --registry-identity "$MI_ID" \
+  --user-assigned "$MI_ID" \
+  --env-vars $(cat /tmp/t2i-env-vars.txt)</code></pre>
 
     <p>
-      After deployment, enable Microsoft Entra authentication at the Container Apps ingress layer and grant the managed identity access to the required Azure AI resources. For example:
+      For an existing app, update the image and environment variables:
     </p>
-    <ul>
-      <li><code>Cognitive Services OpenAI User</code> on the Azure OpenAI or Azure AI Services resource.</li>
-      <li><code>Cognitive Services User</code> on the Azure AI Vision or Azure AI Services resource.</li>
-      <li>Project-level access in Azure AI Foundry if your tenant requires it for model invocation.</li>
-    </ul>
+
+    <pre><code class="language-bash">az containerapp update \
+  --name "$APP" \
+  --resource-group "$RG" \
+  --image "$IMAGE" \
+  --revision-suffix "${TAG//deploy-/d}" \
+  --set-env-vars $(cat /tmp/t2i-env-vars.txt)</code></pre>
 
     <p>
-      Use the Streamlit health endpoint for probes:
+      After deployment, enable Microsoft Entra authentication at the Container Apps ingress layer and restrict access to the tenant, application, group, or app role appropriate for your deployment.
     </p>
 
-    <pre><code>/_stcore/health</code></pre>
+    <p>
+      Use the FastAPI health endpoint and scenario catalog for probes:
+    </p>
+
+    <pre><code class="language-bash">FQDN=$(az containerapp show --name "$APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+curl -fsS "https://$FQDN/health"
+curl -fsS "https://$FQDN/api/scenarios"</code></pre>
+
+    <p>
+      To verify managed identity access to the configured models, run one generation request:
+    </p>
+
+    <pre><code class="language-bash">curl -fsS --max-time 360 \
+  -X POST "https://$FQDN/api/generations" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scenario": "text-to-image",
+    "model": "MAI-Image-2e",
+    "prompt": "A simple blue circle icon on a white background, minimal vector style, no text",
+    "size": "1024x1024",
+    "quality": "low",
+    "n": 1
+  }'</code></pre>
 
     <h2>Production considerations</h2>
     <ul>
-      <li><strong>Storage:</strong> the current app keeps generated images in session state. For multi-user production, add Azure Blob Storage for durable asset libraries and audit trails.</li>
+      <li><strong>Storage:</strong> the current API stores generated images on local writable container storage. For multi-user production, add Azure Blob Storage for durable asset libraries and audit trails.</li>
       <li><strong>Identity:</strong> prefer managed identity in Azure and <code>DefaultAzureCredential</code> locally. Avoid API keys in source code.</li>
       <li><strong>Cost controls:</strong> default to embedding-only or generation-only checks during ideation, then run rubric and judge layers for shortlisted candidates.</li>
       <li><strong>Human review:</strong> keep a final human approval step for brand, accessibility, legal, and regional requirements.</li>
-      <li><strong>Frontend evolution:</strong> move to Next.js when you need saved projects, collaborative review, richer galleries, or integration with enterprise design systems.</li>
-      <li><strong>Backend evolution:</strong> expose the SDK through FastAPI for durable jobs, queue-based generation, signed asset downloads, and central policy enforcement.</li>
+      <li><strong>Frontend evolution:</strong> extend the Next.js app with saved projects, collaborative review, richer galleries, or integration with enterprise design systems.</li>
+      <li><strong>Backend evolution:</strong> add durable jobs, queue-based generation, signed asset downloads, and central policy enforcement.</li>
     </ul>
 
     <h2>Cleanup</h2>
     <p>
-      To stop local execution, end the Streamlit process in your terminal. For cloud resources, remove only the resources created for this walkthrough if they are no longer needed:
+      To stop local execution, end the FastAPI and Next.js processes in your terminals. For cloud resources, remove only the resources created for this walkthrough if they are no longer needed:
     </p>
 
     <pre><code class="language-bash">az containerapp delete --name t2i-app --resource-group &lt;resource-group&gt;
-az acr repository delete --name &lt;acr-name&gt; --image t2i-app:latest</code></pre>
+az acr repository delete --name &lt;acr-name&gt; --image t2i-app:&lt;tag&gt;</code></pre>
 
     <h2>Next steps</h2>
     <ul>
@@ -395,7 +509,7 @@ az acr repository delete --name &lt;acr-name&gt; --image t2i-app:latest</code></
     </ul>
 
     <p>
-      This pattern gives teams a practical bridge from local experimentation to an Azure-hosted image asset workflow. By pairing Azure AI Foundry image generation with repeatable evaluation and deployment practices, teams can move from one-off image prompts to a governed content creation loop.
+      This pattern gives teams a practical bridge from local experimentation to an Azure-hosted image asset workflow. By pairing Microsoft Foundry image generation with repeatable evaluation and deployment practices, teams can move from one-off image prompts to a governed content creation loop.
     </p>
   </article>
 </body>
