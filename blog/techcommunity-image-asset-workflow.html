@@ -1,9 +1,18 @@
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Build a Microsoft Foundry image asset workflow with GPT and MAI image models</title>
+  <meta name="description" content="A practical guide to building a repeatable image asset workflow on Microsoft Foundry: generate images with GPT and MAI models, evaluate prompt adherence and visual quality, rank variations, and deploy to Azure Container Apps.">
+  <meta name="author" content="Prafulla Wani">
+  <meta name="keywords" content="Microsoft Foundry, image generation, MAI-Image, GPT image, image evaluation, prompt adherence, Azure AI Vision, Azure Container Apps">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Build a Microsoft Foundry image asset workflow with GPT and MAI image models">
+  <meta property="og:description" content="Generate, evaluate, compare, and rank AI image assets with Microsoft Foundry image models and a deployable web app.">
+  <!-- Note: meta tags above are for completeness; the Tech Community platform sets page metadata from the editor fields. -->
+
   <style>
     body {
       color: #1f1f1f;
@@ -35,7 +44,7 @@
       padding: 0.1rem 0.25rem;
     }
 
-    pre {
+    pre, pre.lia-code-sample {
       background: #201f1e;
       border-radius: 8px;
       color: #f8f8f8;
@@ -43,7 +52,7 @@
       padding: 1rem;
     }
 
-    pre code {
+    pre code, pre.lia-code-sample code {
       background: transparent;
       color: inherit;
       padding: 0;
@@ -97,8 +106,16 @@
       Generative image models are most useful to product, marketing, and design teams when they are part of a repeatable workflow: prompt, generate, compare, evaluate, refine, and package the best assets for the channel where they will be used. This article walks through a practical reference app that brings that loop together with Microsoft Foundry image models, Azure AI Vision, a Python SDK, and a deployable web experience.
     </p>
 
+    <p>
+      <strong>Who this is for:</strong> developers, and the product, marketing, and design teams they support, who need to produce on-brand image assets at scale and want an objective, repeatable way to choose the best candidate &mdash; not just a one-off prompt. In about ten minutes locally, you can generate several variations of an asset, score each one for prompt adherence and visual quality, and rank them automatically before a human gives final sign-off.
+    </p>
+
     <div class="callout">
-      <strong>What you will build:</strong> a local and cloud-ready image asset workflow that can generate images with GPT-Image and MAI-Image deployments, evaluate prompt adherence and visual quality, compare candidates, and rank generated variations.
+      <strong>What you will build:</strong> a local and cloud-ready image asset workflow that can generate images with GPT image and MAI (Microsoft AI) image deployments, evaluate prompt adherence and visual quality, compare candidates, and rank generated variations.
+    </div>
+
+    <div class="callout">
+      <strong>Disclaimers:</strong> The sample code in this article is provided &ldquo;as is&rdquo; for illustration and learning, without warranties of any kind; review and test it before any production use. The deployment names shown are examples &mdash; use the exact model names available in your Azure region. <em>[When you add screenshots or generated visuals to this post, include a one-line disclosure such as: &ldquo;Images in this post were generated with Microsoft Foundry image models.&rdquo;]</em>
     </div>
 
     <h2>Why this pattern</h2>
@@ -114,10 +131,10 @@
 
     <h2>Solution architecture</h2>
     <p>
-      The repository is organized around a reusable Python SDK named <code>t2i_core</code>. The SDK owns provider construction, model calls, scenario orchestration, evaluation, settings, and utility functions. The web UI and agent skills call into the SDK rather than duplicating model-specific logic.
+      The repository is organized around a reusable Python SDK named <code>t2i_core</code> (&ldquo;text-to-image core&rdquo;). The SDK owns provider construction, model calls, scenario orchestration, evaluation, settings, and utility functions. The web UI and agent skills call into the SDK rather than duplicating model-specific logic.
     </p>
 
-    <pre><code>Users
+    <pre class="lia-code-sample language-markup"><code>Users
   |
   +-- Next.js web UI -- FastAPI backend
   |
@@ -135,11 +152,12 @@
 Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
 
     <p>
-      The current app keeps <code>t2i_core</code> as the backend domain layer, exposes it through a FastAPI service, and uses a Next.js front end for richer multi-user experiences, saved asset libraries, approval workflows, and integration with design systems.
+      The app keeps <code>t2i_core</code> as the backend domain layer, exposes it through a FastAPI service, and uses a Next.js front end. Because the SDK owns all model-specific logic, the same core powers the web UI, developer notebooks, and agent skills &mdash; which keeps behavior consistent and makes the front end straightforward to extend with saved asset libraries, approval workflows, and design-system integration.
     </p>
 
     <div class="placeholder">
-      Screenshot placeholder: architecture diagram showing the Next.js + FastAPI app using the same SDK as notebooks and skills.
+      Screenshot placeholder: architecture diagram showing the Next.js + FastAPI app using the same SDK as notebooks and skills.<br>
+      <strong>Alt text to add:</strong> &ldquo;Architecture diagram: a Next.js web UI and FastAPI backend, plus notebooks and agent skills, all calling a shared t2i_core SDK that connects to Microsoft Foundry, Azure OpenAI, and Azure AI Vision.&rdquo;
     </div>
 
     <h2>Image generation capabilities</h2>
@@ -195,9 +213,14 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       Evaluation is built as layers so teams can choose the right cost and latency profile for each step. The goal is not to replace human creative review; it is to make the first-pass comparison repeatable, explainable, and consistent across generated candidates.
     </p>
 
+    <p>
+      There are three scoring layers, in increasing order of cost and depth: the <strong>embedding</strong> layer for fast semantic screening, the <strong>rubric</strong> layer for attribute-level prompt adherence, and the <strong>judge</strong> layer, where a vision model rates visual quality, spatial coherence, style, aesthetics, and text legibility. The <strong>composite</strong> score and the <strong>decision</strong> then roll those layers up into a single rank and a recommended next action. The Layer column below shows which metric belongs to which.
+    </p>
+
     <table>
       <thead>
         <tr>
+          <th>Layer</th>
           <th>Metric</th>
           <th>What it measures</th>
           <th>How to read it</th>
@@ -206,54 +229,63 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       </thead>
       <tbody>
         <tr>
+          <td>Embedding</td>
           <td>Embedding similarity</td>
           <td>Broad semantic alignment between the prompt text and the image, using Azure AI Vision multimodal vectors.</td>
           <td>A cosine similarity score. It is useful for fast screening, but it is not a percentage and should be calibrated for your asset category.</td>
           <td>Prompt: "a red backpack on a wooden desk." An image containing a red backpack on a desk should score higher than a beach landscape, even before checking detailed attributes.</td>
         </tr>
         <tr>
+          <td>Rubric</td>
           <td>Rubric score</td>
           <td>Prompt adherence at the attribute level. The app decomposes the prompt into concrete checks and verifies whether each one is present.</td>
           <td>A 0-1 score where each "yes" counts as 1, each "partial" counts as 0.5, and each "no" counts as 0.</td>
           <td>If the prompt asks for "a blue ceramic mug, steam rising, on a marble counter" and the image has the mug and counter but no visible steam, the rubric might mark two attributes as yes and one as no, resulting in 0.67.</td>
         </tr>
         <tr>
+          <td>Judge</td>
           <td>Visual quality</td>
           <td>Whether the image is sharp, clean, artifact-free, and suitable as a production asset.</td>
           <td>A 1-5 judge score, where 5 means strong production quality and 1 means severe defects.</td>
           <td>A product photo with crisp edges and no visible distortions may receive 5; a warped product label or noisy background may receive 2.</td>
         </tr>
         <tr>
+          <td>Judge</td>
           <td>Spatial coherence</td>
           <td>Whether objects, perspective, lighting, hands, reflections, shadows, and composition are physically plausible.</td>
           <td>A 1-5 judge score focused on scene consistency rather than prompt matching.</td>
           <td>A handbag correctly resting on a table with consistent shadowing scores higher than one floating above the table or casting an impossible shadow.</td>
         </tr>
         <tr>
+          <td>Judge</td>
           <td>Style fidelity</td>
           <td>Whether the image follows the requested visual style, such as photorealistic product photography, flat illustration, luxury editorial, or social ad creative.</td>
           <td>A 1-5 judge score. This is especially useful when comparing variants that all contain the requested objects but differ in brand fit.</td>
           <td>For "minimal premium skincare ad on a warm beige background," a cluttered neon cyberpunk result may have good objects but low style fidelity.</td>
         </tr>
         <tr>
+          <td>Judge</td>
           <td>Aesthetic appeal</td>
           <td>Overall creative polish: composition, balance, color harmony, framing, and marketability.</td>
           <td>A 1-5 judge score that helps rank multiple acceptable candidates.</td>
           <td>Two images may both satisfy the prompt, but the one with stronger framing, cleaner negative space, and better color contrast should rank higher.</td>
         </tr>
         <tr>
+          <td>Judge</td>
           <td>Text legibility</td>
           <td>Whether generated text is readable and accurate when the prompt asks for visible text, packaging copy, signage, or labels.</td>
           <td>An optional 1-5 judge score. It is included only when text is relevant to the prompt.</td>
           <td>For "a poster that says SUMMER SALE," a clear and correctly spelled headline scores high; misspelled or melted lettering scores low.</td>
         </tr>
         <tr>
+          <td>Composite</td>
           <td>Composite score</td>
           <td>A normalized summary score across the selected layers.</td>
           <td>A 0-1 weighted score. If you skip a layer, the active weights are renormalized instead of treating the skipped layer as zero.</td>
           <td>If only embedding and rubric are selected, the composite ranks candidates using those two signals. If the judge layer is added, quality and aesthetics also influence the final order.</td>
         </tr>
         <tr>
+          <td>Decision</td>
           <td>Decision</td>
           <td>A workflow recommendation: accept, review, or regenerate.</td>
           <td>The app compares layer scores and the composite score with configurable thresholds.</td>
@@ -266,7 +298,7 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       A practical pattern is to use embedding similarity for inexpensive early filtering, add rubric scoring when prompt adherence matters, and add the judge layer when visual polish, brand fit, or text legibility affects the final choice. For example, a marketing team generating five product-ad variations can rank all five by composite score, then inspect the per-metric explanations to understand whether the winner was selected because it matched the prompt, looked more polished, or both.
     </p>
 
-    <pre><code class="language-python">report = await EvaluationPipeline(settings).evaluate(
+    <pre class="lia-code-sample language-python"><code>report = await EvaluationPipeline(settings).evaluate(
     image_bytes,
     prompt,
     layers=["embedding", "rubric", "judge"],
@@ -277,17 +309,118 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
     </p>
 
     <div class="placeholder">
-      Screenshot placeholder: evaluation summary table with composite scores and per-layer results.
+      Screenshot placeholder: evaluation summary table with composite scores and per-layer results.<br>
+      <strong>Alt text to add:</strong> &ldquo;Evaluation summary table showing per-layer scores (embedding, rubric, judge) and a composite score for each generated candidate.&rdquo;
     </div>
+
+    <h3>Worked example: how the rubric layer scores one image</h3>
+    <p>
+      The rubric layer is the easiest to reason about because every step is explicit. Rather than asking a model &ldquo;is this a good image?&rdquo;, the app turns the prompt into a checklist of concrete, verifiable attributes, then asks a vision model to mark each one. The example below walks through a single image end to end.
+    </p>
+
+    <p>
+      <strong>Step 1 &mdash; Start with the prompt.</strong> The creator submits one generation prompt:
+    </p>
+    <pre class="lia-code-sample language-markup"><code>A blue ceramic coffee mug on a white marble counter, hot steam
+rising from the top, soft morning light from the left, shallow
+depth of field, photorealistic product photography</code></pre>
+
+    <p>
+      <strong>Step 2 &mdash; The decomposer turns the prompt into rubric questions.</strong> The <code>EVAL_DECOMPOSER_DEPLOYMENT</code> model breaks the prompt into independent yes/no checks. Each check targets one attribute so the score is explainable rather than a single opaque number:
+    </p>
+    <ul>
+      <li>Is the main subject a coffee mug?</li>
+      <li>Is the mug blue?</li>
+      <li>Is the mug made of ceramic?</li>
+      <li>Is the mug resting on a white marble counter?</li>
+      <li>Is hot steam visibly rising from the mug?</li>
+      <li>Does the lighting read as soft morning light coming from the left?</li>
+      <li>Is there a shallow depth of field (blurred background)?</li>
+      <li>Is the overall style photorealistic product photography?</li>
+    </ul>
+
+    <div class="placeholder">
+      Image placeholder: the generated candidate being scored &mdash; a blue ceramic mug on a marble counter, side-lit, blurred background, with no visible steam.<br>
+      <strong>Alt text to add:</strong> &ldquo;A blue ceramic coffee mug on a white marble counter, soft light from the left and a blurred background, generated by a Microsoft Foundry image model.&rdquo;
+    </div>
+
+    <p>
+      <strong>Step 3 &mdash; The rubric model grades the image against each question.</strong> The <code>EVAL_RUBRIC_DEPLOYMENT</code> model inspects the generated image and returns a verdict and a short reason for every attribute. Scoring uses yes = 1, partial = 0.5, no = 0:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Rubric question</th>
+          <th>Verdict</th>
+          <th>Score</th>
+          <th>Model&rsquo;s reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Is the main subject a coffee mug?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>A single mug is clearly the focal subject.</td>
+        </tr>
+        <tr>
+          <td>Is the mug blue?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>The mug is a solid medium blue.</td>
+        </tr>
+        <tr>
+          <td>Is the mug made of ceramic?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>Matte glazed surface consistent with ceramic.</td>
+        </tr>
+        <tr>
+          <td>Is the mug on a white marble counter?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>Light surface with grey veining reads as marble.</td>
+        </tr>
+        <tr>
+          <td>Is hot steam visibly rising?</td>
+          <td>No</td>
+          <td>0.0</td>
+          <td>No steam or vapor is present above the mug.</td>
+        </tr>
+        <tr>
+          <td>Soft morning light from the left?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>Highlights and shadows indicate a soft left-side key light.</td>
+        </tr>
+        <tr>
+          <td>Shallow depth of field?</td>
+          <td>Partial</td>
+          <td>0.5</td>
+          <td>Background is softened but not strongly blurred.</td>
+        </tr>
+        <tr>
+          <td>Photorealistic product photography style?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>Lighting, focus, and texture read as a real product photo.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      <strong>Step 4 &mdash; Roll the verdicts into a score and a decision.</strong> Summing the verdicts gives 6.5 out of 8 attributes, for a rubric score of <strong>0.81</strong>. The judge layer separately rates visual quality and the other 1-5 dimensions, and the composite score combines the active layers. Because the one missing attribute &mdash; steam &mdash; is easy to name, the workflow can surface a precise recommendation: <em>regenerate with stronger emphasis on visible rising steam</em>, rather than a vague &ldquo;try again.&rdquo; That traceability from prompt &rarr; questions &rarr; per-attribute verdicts &rarr; score is what makes the rubric layer useful for comparing several candidates objectively.
+    </p>
 
     <h2>Prerequisites</h2>
     <ul>
       <li>Python 3.11.</li>
       <li>Azure CLI for local Microsoft Entra authentication.</li>
-      <li>Access to Microsoft Foundry or Azure OpenAI image deployments.</li>
-      <li>Azure AI Vision endpoint for embedding-based evaluation.</li>
+      <li>Access to <a href="https://learn.microsoft.com/azure/foundry/">Microsoft Foundry</a> or Azure OpenAI image deployments.</li>
+      <li><a href="https://learn.microsoft.com/azure/ai-services/computer-vision/">Azure AI Vision</a> endpoint for embedding-based evaluation.</li>
       <li>Deployment names for GPT image, MAI image, MAI 2.5 image, and evaluation model deployments.</li>
-      <li>Optional: Azure Container Registry and Azure Container Apps for deployment.</li>
+      <li>Optional: Azure Container Registry and <a href="https://learn.microsoft.com/azure/container-apps/">Azure Container Apps</a> for deployment.</li>
       <li>For Azure deployment: an existing Microsoft Foundry resource and project, with deployment details already captured in <code>.env</code>.</li>
     </ul>
 
@@ -296,16 +429,20 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       Start with a Python environment and install the local SDK with API dependencies:
     </p>
 
-    <pre><code class="language-bash">uv venv --python 3.11 .venv
+    <pre class="lia-code-sample language-bash"><code>uv venv --python 3.11 .venv
 source .venv/bin/activate
 uv pip install -e "packages/t2i_core[dev,api]"
 cp .env.example .env</code></pre>
 
     <p>
-      Update <code>.env</code> with your resource endpoints and deployment names. Use environment variable names rather than hard-coding values in notebooks, scripts, or UI code.
+      Update <code>.env</code> with your resource endpoints and deployment names. Use environment variable names rather than hard-coding values in notebooks, scripts, or UI code. Never commit real endpoints, keys, or secrets to source control.
     </p>
 
-    <pre><code class="language-bash">FOUNDRY_PROJECT_ENDPOINT=https://&lt;resource&gt;.services.ai.azure.com/api/projects/&lt;project&gt;
+    <div class="callout">
+      <strong>Tip:</strong> the deployment names below are examples. Set each value to the deployment name you created in your own Microsoft Foundry or Azure OpenAI resource, and confirm the model is available in your Azure region.
+    </div>
+
+    <pre class="lia-code-sample language-bash"><code>FOUNDRY_PROJECT_ENDPOINT=https://&lt;resource&gt;.services.ai.azure.com/api/projects/&lt;project&gt;
 AZURE_OPENAI_ENDPOINT=https://&lt;resource&gt;.openai.azure.com
 AZURE_VISION_ENDPOINT=https://&lt;resource&gt;.cognitiveservices.azure.com
 GPT_IMAGE_2_DEPLOYMENT=gpt-image-2
@@ -321,25 +458,26 @@ EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
       Authenticate locally with Microsoft Entra ID:
     </p>
 
-    <pre><code class="language-bash">az login</code></pre>
+    <pre class="lia-code-sample language-bash"><code>az login</code></pre>
 
     <h2>2. Run the web app locally</h2>
     <p>
       Launch the FastAPI backend:
     </p>
 
-    <pre><code class="language-bash">uvicorn api.main:app --reload --port 8000</code></pre>
+    <pre class="lia-code-sample language-bash"><code>uvicorn api.main:app --reload --port 8000</code></pre>
 
     <p>
       In a second terminal, launch the Next.js frontend:
     </p>
 
-    <pre><code class="language-bash">cd web
+    <pre class="lia-code-sample language-bash"><code>cd web
 npm install
 npm run dev</code></pre>
 
     <div class="placeholder">
-      Screenshot placeholder: Asset Creation Workflow home page with model selector, scenario selector, prompt box, and generated gallery.
+      Screenshot placeholder: Asset Creation Workflow home page with model selector, scenario selector, prompt box, and generated gallery.<br>
+      <strong>Alt text to add:</strong> &ldquo;Asset Creation Workflow home page showing a model selector, scenario selector, prompt input box, and a gallery of generated images.&rdquo;
     </div>
 
     <h2>3. Generate channel-ready assets</h2>
@@ -363,7 +501,7 @@ npm run dev</code></pre>
       The SDK is intentionally notebook-friendly. That makes it useful for prompt recipe development, evaluator calibration, and repeatable experiments before a workflow is promoted into the UI.
     </p>
 
-    <pre><code class="language-python">from t2i_core import EvaluationPipeline, GPTImageProvider, MAIImageProvider, Settings
+    <pre class="lia-code-sample language-python"><code>from t2i_core import EvaluationPipeline, GPTImageProvider, MAIImageProvider, Settings
 
 settings = Settings()
 
@@ -387,7 +525,7 @@ mai25_provider = MAIImageProvider(settings, deployment=settings.mai_image_25_dep
       Run the SDK tests to catch regressions in providers, settings, and evaluation helpers:
     </p>
 
-    <pre><code class="language-bash">pytest packages/t2i_core/tests</code></pre>
+    <pre class="lia-code-sample language-bash"><code>pytest packages/t2i_core/tests</code></pre>
 
     <p>
       For live validation, generate a small number of low- or medium-quality images, run embedding-only evaluation first, and then add rubric or judge layers when you need a deeper review.
@@ -398,7 +536,7 @@ mai25_provider = MAIImageProvider(settings, deployment=settings.mai_image_25_dep
       The repository includes a container path for Azure Container Apps. In the tested deployment, the Microsoft Foundry resource/project already existed, the local <code>.env</code> file held the project endpoint and deployment names, and the Container App used a user-assigned managed identity for model access.
     </p>
 
-    <pre><code class="language-bash">RG=&lt;resource-group&gt;
+    <pre class="lia-code-sample language-bash"><code>RG=&lt;resource-group&gt;
 LOCATION=&lt;azure-region&gt;
 ACR=&lt;globally-unique-acr-name&gt;
 API_APP=t2i-app
@@ -411,7 +549,7 @@ MI=t2i-app-mi</code></pre>
       Create the container registry, user-assigned managed identity, Log Analytics workspace, and Container Apps environment. Creating Log Analytics explicitly avoids ambiguous waits during automatic workspace creation:
     </p>
 
-    <pre><code class="language-bash">az acr create --name "$ACR" --resource-group "$RG" --location "$LOCATION" --sku Basic
+    <pre class="lia-code-sample language-bash"><code>az acr create --name "$ACR" --resource-group "$RG" --location "$LOCATION" --sku Basic
 az identity create --name "$MI" --resource-group "$RG" --location "$LOCATION"
 az monitor log-analytics workspace create --resource-group "$RG" --workspace-name "$LAW" --location "$LOCATION"
 
@@ -431,7 +569,7 @@ az containerapp env create \
       Grant the managed identity ACR pull access and model access. Assign <code>Cognitive Services OpenAI User</code> and <code>Cognitive Services User</code> on the Azure OpenAI or Azure AI Services resource, and also at the Microsoft Foundry project scope if your tenant requires project-level access:
     </p>
 
-    <pre><code class="language-bash">MI_PRINCIPAL=$(az identity show --name "$MI" --resource-group "$RG" --query principalId -o tsv)
+    <pre class="lia-code-sample language-bash"><code>MI_PRINCIPAL=$(az identity show --name "$MI" --resource-group "$RG" --query principalId -o tsv)
 ACR_ID=$(az acr show --name "$ACR" --resource-group "$RG" --query id -o tsv)
 AI_ACCOUNT_ID=&lt;cognitive-services-or-ai-services-account-resource-id&gt;
 FOUNDRY_PROJECT_ID=&lt;microsoft-foundry-project-resource-id&gt;
@@ -446,14 +584,14 @@ az role assignment create --assignee-object-id "$MI_PRINCIPAL" --assignee-princi
       Build the backend with a unique image tag so Azure Container Apps creates a fresh revision instead of reusing a cached <code>latest</code> image:
     </p>
 
-    <pre><code class="language-bash">API_TAG=api-$(date +%Y%m%d%H%M%S)
+    <pre class="lia-code-sample language-bash"><code>API_TAG=api-$(date +%Y%m%d%H%M%S)
 az acr build --registry "$ACR" --image "t2i-app:$API_TAG" .</code></pre>
 
     <p>
       Reuse the local <code>.env</code> file for Container App environment variables and add <code>AZURE_CLIENT_ID</code> for the user-assigned identity:
     </p>
 
-    <pre><code class="language-bash">MI_ID=$(az identity show --name "$MI" --resource-group "$RG" --query id -o tsv)
+    <pre class="lia-code-sample language-bash"><code>MI_ID=$(az identity show --name "$MI" --resource-group "$RG" --query id -o tsv)
 MI_CLIENT_ID=$(az identity show --name "$MI" --resource-group "$RG" --query clientId -o tsv)
 
 python - &lt;&lt;'PY' &gt; /tmp/t2i-env-vars.txt
@@ -494,7 +632,7 @@ sed -i "s#__AZURE_CLIENT_ID__#$MI_CLIENT_ID#" /tmp/t2i-env-vars.txt</code></pre>
       Create the Container App with external ingress, managed identity for ACR pull, and the same managed identity for model access:
     </p>
 
-    <pre><code class="language-bash">API_IMAGE="$ACR.azurecr.io/t2i-app:$API_TAG"
+    <pre class="lia-code-sample language-bash"><code>API_IMAGE="$ACR.azurecr.io/t2i-app:$API_TAG"
 
 az containerapp create \
   --name "$API_APP" \
@@ -512,7 +650,7 @@ az containerapp create \
       For an existing app, update the image and environment variables:
     </p>
 
-    <pre><code class="language-bash">az containerapp update \
+    <pre class="lia-code-sample language-bash"><code>az containerapp update \
   --name "$API_APP" \
   --resource-group "$RG" \
   --image "$API_IMAGE" \
@@ -523,7 +661,7 @@ az containerapp create \
       Build the Next.js frontend as a second Container App. The browser bundle needs the backend URL at build time through <code>NEXT_PUBLIC_API_BASE_URL</code>:
     </p>
 
-    <pre><code class="language-bash">API_FQDN=$(az containerapp show --name "$API_APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+    <pre class="lia-code-sample language-bash"><code>API_FQDN=$(az containerapp show --name "$API_APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
 API_BASE_URL="https://$API_FQDN"
 WEB_TAG=web-$(date +%Y%m%d%H%M%S)
 
@@ -551,7 +689,7 @@ az containerapp create \
       Then allow the deployed frontend origin through the backend CORS configuration:
     </p>
 
-    <pre><code class="language-bash">WEB_FQDN=$(az containerapp show --name "$WEB_APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+    <pre class="lia-code-sample language-bash"><code>WEB_FQDN=$(az containerapp show --name "$WEB_APP" --resource-group "$RG" --query properties.configuration.ingress.fqdn -o tsv)
 WEB_ORIGIN="https://$WEB_FQDN"
 
 az containerapp update \
@@ -567,7 +705,7 @@ az containerapp update \
       Use the FastAPI health endpoint, frontend health endpoint, scenario catalog, and CORS preflight for probes:
     </p>
 
-    <pre><code class="language-bash">curl -fsS "$API_BASE_URL/health"
+    <pre class="lia-code-sample language-bash"><code>curl -fsS "$API_BASE_URL/health"
 curl -fsS "$API_BASE_URL/api/scenarios"
 curl -fsS "$WEB_ORIGIN/health"
 curl -fsS "$WEB_ORIGIN/" | grep -i "Asset Creation Workflow"
@@ -580,7 +718,7 @@ curl -fsS -I -X OPTIONS "$API_BASE_URL/api/scenarios" \
       To verify managed identity access to the configured models, run one generation request:
     </p>
 
-    <pre><code class="language-bash">curl -fsS --max-time 360 \
+    <pre class="lia-code-sample language-bash"><code>curl -fsS --max-time 360 \
   -X POST "$API_BASE_URL/api/generations" \
   -H "Content-Type: application/json" \
   -d '{
@@ -607,7 +745,7 @@ curl -fsS -I -X OPTIONS "$API_BASE_URL/api/scenarios" \
       To stop local execution, end the FastAPI and Next.js processes in your terminals. For cloud resources, remove only the resources created for this walkthrough if they are no longer needed:
     </p>
 
-    <pre><code class="language-bash">az containerapp delete --name t2i-app --resource-group &lt;resource-group&gt;
+    <pre class="lia-code-sample language-bash"><code>az containerapp delete --name t2i-app --resource-group &lt;resource-group&gt;
 az acr repository delete --name &lt;acr-name&gt; --image t2i-app:&lt;tag&gt;</code></pre>
 
     <h2>Next steps</h2>
@@ -621,6 +759,23 @@ az acr repository delete --name &lt;acr-name&gt; --image t2i-app:&lt;tag&gt;</co
 
     <p>
       This pattern gives teams a practical bridge from local experimentation to an Azure-hosted image asset workflow. By pairing Microsoft Foundry image generation with repeatable evaluation and deployment practices, teams can move from one-off image prompts to a governed content creation loop.
+    </p>
+
+    <h2>Resources</h2>
+    <ul>
+      <li>Sample code: <a href="[Insert GitHub repo URL]">[Insert GitHub repo URL]</a> &mdash; published under <em>[insert license, e.g. MIT]</em>. <em>[Confirm the repo is public and OSS-cleared before linking.]</em></li>
+      <li>Microsoft Foundry documentation: <a href="https://learn.microsoft.com/azure/foundry/">learn.microsoft.com/azure/foundry</a></li>
+      <li>Image generation with Azure OpenAI: <a href="https://learn.microsoft.com/azure/ai-services/openai/">learn.microsoft.com/azure/ai-services/openai</a></li>
+      <li>Azure AI Vision multimodal embeddings: <a href="https://learn.microsoft.com/azure/ai-services/computer-vision/">learn.microsoft.com/azure/ai-services/computer-vision</a></li>
+      <li>Azure Container Apps: <a href="https://learn.microsoft.com/azure/container-apps/">learn.microsoft.com/azure/container-apps</a></li>
+    </ul>
+    <p>
+      <em>Verify each link resolves to the correct, current page before publishing.</em>
+    </p>
+
+    <h2>Join the conversation</h2>
+    <p>
+      How is your team approaching automated evaluation for generated image assets &mdash; which signals (prompt adherence, visual quality, brand fit) matter most for your channels? Share your scenarios and questions in the comments below, and tell us which evaluation layer you would add next.
     </p>
   </article>
 </body>
