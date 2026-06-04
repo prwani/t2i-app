@@ -43,6 +43,7 @@ class ImprovePromptResponse(BaseModel):
 class AssetInput(BaseModel):
     id: str | None = None
     data: str | None = None
+    sample_path: str | None = None
     name: str | None = None
     prompt: str | None = None
     model: str | None = None

@@ -48,7 +48,8 @@ const evalUtils = [
 export default function Home() {
   const router = useRouter();
   const [apiOnline, setApiOnline] = useState<"checking" | "online" | "offline">("checking");
-  const [scenarios, setScenarios] = useState<Scenario[]>(fallbackScenarios);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [scenariosLoading, setScenariosLoading] = useState(true);
 
   useEffect(() => {
     let ignore = false;
@@ -62,7 +63,11 @@ export default function Home() {
       try {
         const remote = await api.scenarios();
         if (!ignore && remote.length) setScenarios(remote);
-      } catch { /* use fallbacks */ }
+      } catch {
+        if (!ignore) setScenarios(fallbackScenarios);
+      } finally {
+        if (!ignore) setScenariosLoading(false);
+      }
     }
     bootstrap();
     return () => { ignore = true; };
@@ -94,6 +99,14 @@ export default function Home() {
             Content Creation Scenarios
           </h2>
           <ul className="linkList">
+            {scenariosLoading && (
+              <li>
+                <div className="linkCard">
+                  <strong>Loading scenarios…</strong>
+                  <span>Fetching the full Microsoft Foundry workflow catalog.</span>
+                </div>
+              </li>
+            )}
             {scenarios.map((s) => (
               <li key={s.id}>
                 <button type="button" className="linkCard" onClick={() => router.push(`/studio/${encodeURIComponent(s.id)}`)}>

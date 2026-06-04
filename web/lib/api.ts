@@ -18,6 +18,7 @@ export type Asset = {
   title: string;
   url?: string;
   prompt?: string;
+  model?: string;
   status?: string;
   metadata?: Record<string, unknown>;
 };
@@ -26,6 +27,7 @@ export type Job = {
   id: string;
   status: "queued" | "running" | "succeeded" | "failed" | "completed" | string;
   message?: string;
+  error?: string;
   assets: Asset[];
 };
 
@@ -103,6 +105,7 @@ export function normalizeAsset(raw: unknown, index = 0): Asset {
     title: String(pick(item.title ?? item.name, `Asset ${index + 1}`)),
     url: normalizeUrl((item.url ?? item.image_url ?? item.uri ?? item.path) as string | undefined),
     prompt: item.prompt as string | undefined,
+    model: item.model as string | undefined,
     status: item.status as string | undefined,
     metadata: item.metadata as Record<string, unknown> | undefined
   };
@@ -118,6 +121,7 @@ export function normalizeJob(raw: Record<string, unknown>): Job {
     id: jobId,
     status,
     message: raw.message as string | undefined,
+    error: raw.error as string | undefined,
     assets
   };
 }

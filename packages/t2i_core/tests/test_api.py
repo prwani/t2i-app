@@ -12,6 +12,14 @@ from t2i_core.types import GenerationResult
 client = TestClient(app)
 
 
+def wait_for_generation(job_id: str) -> dict:
+    for _ in range(10):
+        payload = client.get(f"/api/generations/{job_id}").json()
+        if payload["status"] not in {"queued", "running"}:
+            return payload
+    return payload
+
+
 def test_health() -> None:
     response = client.get("/health")
 
@@ -65,8 +73,11 @@ def test_generation_returns_async_ready_job_shape(monkeypatch) -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["job_id"]
-    assert payload["status"] == "succeeded"
+    assert payload["status"] in {"queued", "succeeded"}
     assert payload["error"] is None
+    if payload["status"] == "queued":
+        payload = wait_for_generation(payload["job_id"])
+    assert payload["status"] == "succeeded"
     assert payload["assets"][0]["url"].startswith("/assets/generated/")
 
 
@@ -112,7 +123,52 @@ def test_inpainting_honors_selected_edit_model(monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["status"] == "succeeded"
+    payload = wait_for_generation(response.json()["job_id"])
+    assert payload["status"] == "succeeded"
+
+
+def test_generation_accepts_server_sample_paths(monkeypatch) -> None:
+    async def fake_compose_uploaded_images(
+        images: list[bytes],
+        prompt: str,
+        model: str,
+        *,
+        size: str,
+        quality: str,
+    ):
+        assert len(images) == 2
+        assert all(images)
+        assert model == "gpt-image-2"
+        return [
+            GeneratedAsset(
+                name="composition.png",
+                result=GenerationResult(
+                    image=b"image-bytes",
+                    prompt=prompt,
+                    model=model,
+                    size=size,
+                    quality=quality,
+                ),
+            )
+        ]
+
+    monkeypatch.setattr("api.main.services.compose_uploaded_images", fake_compose_uploaded_images)
+
+    response = client.post(
+        "/api/generations",
+        json={
+            "scenario": "multi-image-composition",
+            "prompt": "compose the inputs",
+            "source_images": [
+                {"sample_path": "composition/example-5/background.png", "name": "background.png"},
+                {"sample_path": "composition/example-5/product.png", "name": "product.png"},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = wait_for_generation(response.json()["job_id"])
+    assert payload["status"] == "succeeded"
 
 
 def test_evaluation_accepts_external_base64_asset(monkeypatch) -> None:

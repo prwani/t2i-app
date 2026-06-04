@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState, useCallback } from "react";
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { API_BASE_URL, Asset, Job, Scenario, api, normalizeAsset, normalizeJob } from "../../../lib/api";
 
@@ -21,6 +21,14 @@ type DetailModal = {
   body: ReactNode;
 };
 
+type ModelGenerationProgress = {
+  model: string;
+  completed: number;
+  total: number;
+  status: "queued" | "running" | "succeeded" | "failed";
+  error?: string;
+};
+
 export default function StudioPage() {
   const params = useParams();
   const router = useRouter();
@@ -30,6 +38,7 @@ export default function StudioPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>(fallbackScenarios);
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("MAI-Image-2e");
+  const [selectedModels, setSelectedModels] = useState<string[]>(["MAI-Image-2e"]);
   const [assetCount, setAssetCount] = useState(4);
   const [size, setSize] = useState("1024x1024");
   const [style, setStyle] = useState("Premium editorial");
@@ -46,6 +55,8 @@ export default function StudioPage() {
 
   const [job, setJob] = useState<Job | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [generationProgress, setGenerationProgress] = useState<ModelGenerationProgress[]>([]);
+  const [generationProgressExpanded, setGenerationProgressExpanded] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -56,16 +67,31 @@ export default function StudioPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [detailModal, setDetailModal] = useState<DetailModal | null>(null);
   const [scenarioPickerOpen, setScenarioPickerOpen] = useState(false);
+  const evalResultsRef = useRef<HTMLDivElement | null>(null);
 
   const scenario = useMemo(
     () => scenarios.find((s) => s.id === scenarioId) ?? scenarios[0],
     [scenarios, scenarioId]
   );
   const selectedExampleIndex = selectedExample === "Custom" ? -1 : Number.parseInt(selectedExample, 10);
+  const modelOptions = useMemo(() => availableModelsForScenario(scenario), [scenario]);
+  const activeModels = useMemo(
+    () => (modelOptions.length ? selectedModels.filter((item) => modelOptions.includes(item)) : [model].filter(Boolean)),
+    [model, modelOptions, selectedModels]
+  );
+  const selectedModelCount = activeModels.length;
+  const clampedAssetCount = Math.min(Math.max(assetCount, 1), 4);
+  const requestedAssetTotal = selectedModelCount * clampedAssetCount;
+  const showGenerationProgress = isGenerating || generationProgress.length > 0;
+  const generatedImageCount = generationProgress.reduce((sum, item) => sum + item.completed, 0);
+  const generationImageTotal = generationProgress.reduce((sum, item) => sum + item.total, 0);
+  const hasEvaluationResults = Boolean(evaluation || comparison);
   const selectedExtra = useMemo<Record<string, unknown>>(() => {
     if (!scenario || selectedExampleIndex < 0) return {};
     return scenario.exampleExtras[selectedExampleIndex] ?? {};
   }, [scenario, selectedExampleIndex]);
+  const sampleImagePaths = useMemo(() => readStringArray(selectedExtra.sample_images), [selectedExtra]);
+  const sampleMaskPath = useMemo(() => readString(selectedExtra.sample_images_mask), [selectedExtra]);
 
   /* ── bootstrap ──────────────────────────────────────────────── */
   useEffect(() => {
@@ -83,7 +109,9 @@ export default function StudioPage() {
   useEffect(() => {
     if (!scenario) return;
     setPrompt(scenario.defaultPrompt);
-    setModel(scenario.forcedModel ?? scenario.defaultModel);
+    const defaultModel = scenario.forcedModel ?? scenario.defaultModel;
+    setModel(defaultModel);
+    setSelectedModels([defaultModel]);
     setSelectedExample("Custom");
     setBrandColorsText("");
     setFontStyle("");
@@ -98,6 +126,7 @@ export default function StudioPage() {
 
   useEffect(() => {
     if (selectedExampleIndex < 0 || !scenario) return;
+    setPrompt(scenario.examples[selectedExampleIndex] ?? scenario.defaultPrompt);
     const extra = scenario.exampleExtras[selectedExampleIndex] ?? {};
     setBrandColorsText(readString(extra.colors));
     setFontStyle(readString(extra.font_style));
@@ -117,13 +146,33 @@ export default function StudioPage() {
     const ctrl = new AbortController();
     const interval = window.setInterval(async () => {
       try {
-        const payload = await api.getGeneration(job.id, ctrl.signal);
-        const next = normalizeJob(payload);
-        setJob(next);
-        if (next.assets.length) setAssets(next.assets);
-        if (["succeeded", "completed", "failed"].includes(next.status)) {
+        const jobIds = job.id.split(",").map((id) => id.trim()).filter(Boolean);
+        const results = await Promise.all(jobIds.map((id) => api.getGeneration(id, ctrl.signal).then(normalizeJob)));
+        const nextAssets = results.flatMap((next) => next.assets);
+        const hasRunningJob = results.some((next) => ["queued", "running"].includes(next.status));
+        const failedJobs = results.filter((next) => next.status === "failed");
+        const nextJob: Job = {
+          id: job.id,
+          status: hasRunningJob ? "running" : failedJobs.length ? "failed" : "succeeded",
+          assets: nextAssets,
+          error: failedJobs.map((next) => next.error).filter(Boolean).join(" ")
+        };
+        setJob(nextJob);
+        setAssets(nextAssets);
+        setGenerationProgress((prev) =>
+          prev.map((item, index) => {
+            const result = results[index];
+            if (!result) return item;
+            const completed = result.assets.length;
+            if (result.status === "failed") return { ...item, completed, status: "failed", error: result.error };
+            if (["succeeded", "completed"].includes(result.status)) return { ...item, completed: Math.max(completed, item.total), status: "succeeded" };
+            return { ...item, completed, status: "running" };
+          })
+        );
+        if (!hasRunningJob) {
           window.clearInterval(interval);
           setIsGenerating(false);
+          setGenerationProgressExpanded(false);
         }
       } catch (err) {
         if (!ctrl.signal.aborted) setNotice(err instanceof Error ? err.message : "Unable to refresh job status.");
@@ -131,6 +180,12 @@ export default function StudioPage() {
     }, 2200);
     return () => { ctrl.abort(); window.clearInterval(interval); };
   }, [job]);
+
+  useEffect(() => {
+    if (!isEvaluating && hasEvaluationResults) {
+      evalResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [hasEvaluationResults, isEvaluating]);
 
   /* ── actions ────────────────────────────────────────────────── */
   const improvePrompt = useCallback(async () => {
@@ -148,16 +203,34 @@ export default function StudioPage() {
   }, [prompt, scenario]);
 
   const generateAssets = useCallback(async () => {
+    if (!activeModels.length) {
+      setNotice("Select at least one model.");
+      return;
+    }
     setIsGenerating(true);
     setNotice("");
     setEvaluation(null);
     setComparison(null);
+    setAssets([]);
+    setGenerationProgressExpanded(true);
+    const progressTotal = progressTotalForScenario(scenario.id, clampedAssetCount, {
+      formats: selectedFormats,
+      environments: splitLines(environmentsText),
+      refinements: splitLines(refinementsText),
+    });
+    setGenerationProgress(
+      activeModels.map((selectedModel) => ({
+        model: selectedModel,
+        completed: 0,
+        total: progressTotal,
+        status: "queued"
+      }))
+    );
     try {
       const payload: Record<string, unknown> = {
         scenario: scenario.id,
         prompt,
-        model: scenario.forcedModel ?? model,
-        n: Math.min(Math.max(assetCount, 1), 4),
+        n: clampedAssetCount,
         size,
         quality: "high"
       };
@@ -181,11 +254,9 @@ export default function StudioPage() {
         payload.refinements = splitLines(refinementsText);
       }
 
-      const sampleImagePaths = readStringArray(selectedExtra.sample_images);
       if (useSampleInputs && sampleImagePaths.length) {
         payload.source_images = await Promise.all(sampleImagePaths.map((path) => samplePathToAssetInput(path)));
       }
-      const sampleMaskPath = readString(selectedExtra.sample_images_mask);
       if (useSampleInputs && sampleMaskPath) {
         payload.mask = await samplePathToAssetInput(sampleMaskPath);
       }
@@ -200,20 +271,44 @@ export default function StudioPage() {
         throw new Error("Select an example with a sample product image for product placement.");
       }
 
-      const result = await api.createGeneration(payload);
-      const next = normalizeJob(result);
-      setJob(next);
-      if (next.assets.length) setAssets(next.assets);
-      if (!["queued", "running"].includes(next.status)) setIsGenerating(false);
+      const jobs = await Promise.all(
+        activeModels.map((selectedModel) => generateModelAssets(selectedModel, payload, setGenerationProgress, setAssets))
+      );
+      const allAssets = jobs.flatMap((next) => next.assets);
+      const failedJobs = jobs.filter((next) => next.status === "failed");
+      const runningJob = jobs.find((next) => ["queued", "running"].includes(next.status));
+      const nextJob: Job = {
+        id: jobs.map((next) => next.id).join(","),
+        status: runningJob ? "running" : failedJobs.length ? "failed" : "succeeded",
+        assets: allAssets,
+        error: failedJobs.map((next) => next.error).filter(Boolean).join(" ")
+      };
+      setJob(nextJob);
+      setAssets(allAssets);
+      if (failedJobs.length) {
+        setNotice(
+          failedJobs
+            .map((next) => next.error || `Generation failed for job ${next.id}.`)
+            .join(" ")
+        );
+      }
+      setGenerationProgress((prev) =>
+        prev.map((item) => item.status === "failed" ? item : { ...item, completed: Math.max(item.completed, item.total), status: "succeeded" })
+      );
+      if (!runningJob) {
+        setIsGenerating(false);
+        setGenerationProgressExpanded(false);
+      }
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Generation request failed.");
       setIsGenerating(false);
+      setGenerationProgressExpanded(false);
     }
   }, [
     scenario,
     prompt,
-    model,
-    assetCount,
+    activeModels,
+    clampedAssetCount,
     size,
     brandColorsText,
     fontStyle,
@@ -223,7 +318,8 @@ export default function StudioPage() {
     selectedFormats,
     environmentsText,
     refinementsText,
-    selectedExtra,
+    sampleImagePaths,
+    sampleMaskPath,
     useSampleInputs,
   ]);
 
@@ -232,7 +328,7 @@ export default function StudioPage() {
     setIsEvaluating(true);
     setNotice("");
     try {
-      const body = { prompt, assets: assets.map((a) => ({ id: a.id, name: a.title, prompt: a.prompt ?? prompt })) };
+      const body = { prompt, assets: assets.map((a) => ({ id: a.id, name: a.title, prompt: a.prompt ?? prompt, model: a.model })) };
       const result = mode === "evaluate" ? await api.evaluate(body) : await api.compare(body);
       if (mode === "evaluate") setEvaluation(result);
       else setComparison(result);
@@ -304,15 +400,32 @@ export default function StudioPage() {
           {sidebarOpen && (
             <div className="sidebarBody">
               <label className="sField">
-                <span>Model</span>
-                {scenario.modelOptions.length ? (
-                  <select value={model} onChange={(e) => setModel(e.target.value)} disabled={Boolean(scenario.forcedModel)}>
-                    {scenario.modelOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
+                <span>Models</span>
+                {modelOptions.length ? (
+                  <div className="checkGrid modelGrid">
+                    {modelOptions.map((option) => (
+                      <label key={option} className="checkItem">
+                        <input
+                          type="checkbox"
+                          checked={activeModels.includes(option)}
+                          disabled={Boolean(scenario.forcedModel)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedModels((prev) => (prev.includes(option) ? prev : [...prev, option]));
+                              return;
+                            }
+                            setSelectedModels((prev) => prev.filter((item) => item !== option));
+                          }}
+                        />
+                        <span>{option}</span>
+                      </label>
                     ))}
-                  </select>
+                    <small className="modelSummary">
+                      {selectedModelCount
+                        ? `${assetCount} image${assetCount === 1 ? "" : "s"} per model, ${requestedAssetTotal} total`
+                        : "Select at least one model"}
+                    </small>
+                  </div>
                 ) : (
                   <input value={model} onChange={(e) => setModel(e.target.value)} disabled={Boolean(scenario.forcedModel)} />
                 )}
@@ -413,12 +526,7 @@ export default function StudioPage() {
                     <select
                       value={selectedExample}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        setSelectedExample(val);
-                        if (val !== "Custom") {
-                          const idx = parseInt(val, 10);
-                          setPrompt(scenario.examples[idx]);
-                        }
+                        setSelectedExample(e.target.value);
                       }}
                     >
                       <option value="Custom">Custom</option>
@@ -429,32 +537,9 @@ export default function StudioPage() {
                       ))}
                     </select>
                   </label>
-                  {selectedExample !== "Custom" && (
-                    <p className="examplePreview">{scenario.examples[parseInt(selectedExample, 10)]}</p>
-                  )}
                 </div>
               )}
 
-              {readStringArray(selectedExtra.sample_images).length > 0 && (
-                <div className="exampleSection">
-                  <label className="checkItem">
-                    <input type="checkbox" checked={useSampleInputs} onChange={(e) => setUseSampleInputs(e.target.checked)} />
-                    <span>Use sample input images</span>
-                  </label>
-                  {useSampleInputs && (
-                    <div className="samplePreviewGrid">
-                      {readStringArray(selectedExtra.sample_images).map((path) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={path} src={sampleAssetUrl(path)} alt={path.split("/").pop() ?? "sample input"} />
-                      ))}
-                      {readString(selectedExtra.sample_images_mask) && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={sampleAssetUrl(readString(selectedExtra.sample_images_mask))} alt="sample mask" />
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </aside>
@@ -471,15 +556,80 @@ export default function StudioPage() {
               rows={5}
               placeholder="Describe the image you want to create…"
             />
+            {sampleImagePaths.length > 0 && (
+              <div className="sampleInputPanel">
+                <div className="sampleInputHeader">
+                  <div>
+                    <strong>Sample input images</strong>
+                    <p>These references will be sent with the prompt. Click a thumbnail to view it larger.</p>
+                  </div>
+                  <label className="checkItem">
+                    <input type="checkbox" checked={useSampleInputs} onChange={(e) => setUseSampleInputs(e.target.checked)} />
+                    <span>Use samples</span>
+                  </label>
+                </div>
+                {useSampleInputs && (
+                  <div className="samplePreviewGrid">
+                    {sampleImagePaths.map((path, index) => (
+                      <figure key={path} className="samplePreviewItem">
+                        <button type="button" onClick={() => setLightboxUrl(sampleAssetUrl(path))} aria-label={`View sample input ${index + 1}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={sampleAssetUrl(path)} alt={`Sample input ${index + 1}`} />
+                        </button>
+                        <figcaption>{path.split("/").pop() ?? `Input ${index + 1}`}</figcaption>
+                      </figure>
+                    ))}
+                    {sampleMaskPath && (
+                      <figure className="samplePreviewItem">
+                        <button type="button" onClick={() => setLightboxUrl(sampleAssetUrl(sampleMaskPath))} aria-label="View sample mask">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={sampleAssetUrl(sampleMaskPath)} alt="Sample mask" />
+                        </button>
+                        <figcaption>Mask</figcaption>
+                      </figure>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="promptActions">
               <button type="button" className="improveBtn" onClick={improvePrompt} disabled={isImproving}>
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.09 6.26L18 10l-5.91 1.74L10 18l-2.09-6.26L2 10l5.91-1.74L10 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>
                 {isImproving ? "Improving…" : "Improve with AI"}
               </button>
-              <button type="button" className="generateBtn" onClick={generateAssets} disabled={isGenerating || !prompt}>
+              <button type="button" className="generateBtn" onClick={generateAssets} disabled={isGenerating || !prompt || !activeModels.length}>
                 {isGenerating ? "Generating…" : "Generate Assets"}
               </button>
             </div>
+            {showGenerationProgress && (
+              <div className={`generationProgress${generationProgressExpanded ? " expanded" : " collapsed"}`} aria-live="polite">
+                <button
+                  type="button"
+                  className="generationProgressHeader"
+                  onClick={() => setGenerationProgressExpanded((value) => !value)}
+                  aria-expanded={generationProgressExpanded}
+                >
+                  <strong>Generation progress (This may take 5-10 mins)</strong>
+                  <span>{generatedImageCount} / {generationImageTotal} images generated</span>
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d={generationProgressExpanded ? "M6 12l4-4 4 4" : "M6 8l4 4 4-4"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                {generationProgressExpanded && (
+                  <div className="generationProgressList">
+                    {generationProgress.map((item) => (
+                      <div key={item.model} className="modelProgressItem">
+                        <div className="modelProgressMeta">
+                          <span>{item.model}</span>
+                          <small>{progressLabel(item)}</small>
+                        </div>
+                        <div className="modelProgressTrack" role="progressbar" aria-label={`${item.model} generation progress`} aria-valuemin={0} aria-valuemax={item.total} aria-valuenow={item.completed}>
+                          <div className={`modelProgressFill ${item.status}`} style={{ width: `${Math.min(100, Math.round((item.completed / Math.max(item.total, 1)) * 100))}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Gallery */}
@@ -488,9 +638,23 @@ export default function StudioPage() {
               <div className="galleryHeader">
                 <h2>Generated Assets</h2>
                 <button type="button" className="evalTrigger" onClick={() => runEvaluation("evaluate")} disabled={isEvaluating}>
-                  {isEvaluating ? "Evaluating…" : "Evaluate Selected Set"}
+                  {isEvaluating && <span className="btnSpinner" aria-hidden="true" />}
+                  {isEvaluating
+                    ? "Evaluating selected set..."
+                    : hasEvaluationResults
+                      ? "Evaluation ready - run again"
+                      : "Evaluate Selected Set"}
                 </button>
               </div>
+              {isEvaluating && (
+                <div className="evalProgress" role="progressbar" aria-label="Evaluation in progress">
+                  <div className="evalProgressBar" />
+                  <span>Evaluating generated assets. Results will appear below.</span>
+                </div>
+              )}
+              {!isEvaluating && hasEvaluationResults && (
+                <div className="evalReadyNotice">Evaluation results are ready below.</div>
+              )}
               <div className="gallery">
                 {assets.map((asset) => (
                   <article className="assetCard" key={asset.id}>
@@ -518,7 +682,7 @@ export default function StudioPage() {
                     <div className="assetMeta">
                       <h3>{asset.title}</h3>
                       <p>{asset.prompt ?? prompt}</p>
-                      <small>{asset.status ?? "ready"}</small>
+                      <small>{asset.model ? `${asset.model} · ${asset.status ?? "ready"}` : asset.status ?? "ready"}</small>
                     </div>
                   </article>
                 ))}
@@ -537,7 +701,7 @@ export default function StudioPage() {
 
           {/* Evaluation results */}
           {(evaluation || comparison) && (
-            <div className="evalResults">
+            <div className="evalResults" ref={evalResultsRef}>
               <h2>Evaluation Results</h2>
               {Boolean(evaluation?.error || comparison?.error) && (
                 <div className="notice">{String(evaluation?.error ?? comparison?.error)}</div>
@@ -703,25 +867,78 @@ function splitLines(value: string): string[] {
     .filter(Boolean);
 }
 
+function progressTotalForScenario(
+  scenarioId: string,
+  imageCount: number,
+  values: { formats: string[]; environments: string[]; refinements: string[] }
+): number {
+  if (scenarioId === "aspect-ratio-package") return Math.max(values.formats.length, 1);
+  if (scenarioId === "product-placement") return Math.max(values.environments.length, 1);
+  if (scenarioId === "multi-turn-refinement") return Math.max(values.refinements.length + 1, 1);
+  return imageCount;
+}
+
+function updateModelProgress(
+  setGenerationProgress: Dispatch<SetStateAction<ModelGenerationProgress[]>>,
+  model: string,
+  update: Partial<ModelGenerationProgress>
+) {
+  setGenerationProgress((prev) => prev.map((item) => item.model === model ? { ...item, ...update } : item));
+}
+
+function appendGeneratedAssets(setAssets: Dispatch<SetStateAction<Asset[]>>, nextAssets: Asset[]) {
+  if (!nextAssets.length) return;
+  setAssets((prev) => [...prev, ...nextAssets]);
+}
+
+async function generateModelAssets(
+  model: string,
+  payload: Record<string, unknown>,
+  setGenerationProgress: Dispatch<SetStateAction<ModelGenerationProgress[]>>,
+  setAssets: Dispatch<SetStateAction<Asset[]>>
+): Promise<Job> {
+  updateModelProgress(setGenerationProgress, model, { status: "running" });
+  try {
+    const result = await api.createGeneration({ ...payload, model });
+    const next = normalizeJob(result);
+    appendGeneratedAssets(setAssets, next.assets);
+    updateModelProgress(setGenerationProgress, model, {
+      completed: next.assets.length,
+      status: next.status === "failed" ? "failed" : ["queued", "running"].includes(next.status) ? "running" : "succeeded",
+      error: next.error
+    });
+    return next;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Generation request failed.";
+    updateModelProgress(setGenerationProgress, model, { status: "failed", error });
+    return { id: `${model}-failed`, status: "failed", assets: [], error };
+  }
+}
+
+function progressLabel(item: ModelGenerationProgress): string {
+  if (item.status === "failed") return item.error ? `Failed: ${item.error}` : "Failed";
+  if (item.status === "succeeded") return `${item.completed} image${item.completed === 1 ? "" : "s"} generated`;
+  if (item.status === "running") return `Generating ${item.total} image${item.total === 1 ? "" : "s"}...`;
+  return `Queued for ${item.total} image${item.total === 1 ? "" : "s"}`;
+}
+
+function availableModelsForScenario(scenario: Scenario): string[] {
+  const models = scenario.forcedModel
+    ? [scenario.forcedModel]
+    : scenario.modelOptions.length
+      ? scenario.modelOptions
+      : [scenario.defaultModel];
+  return Array.from(new Set(models.filter(Boolean)));
+}
+
 function sampleAssetUrl(path: string): string {
   return `${API_BASE_URL}/assets/samples/${path}`;
 }
 
-async function samplePathToAssetInput(path: string): Promise<{ name: string; data: string }> {
-  const response = await fetch(sampleAssetUrl(path));
-  if (!response.ok) {
-    throw new Error(`Failed to load sample image: ${path}`);
-  }
-  const contentType = response.headers.get("content-type") ?? "image/png";
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  const base64 = btoa(binary);
+function samplePathToAssetInput(path: string): { name: string; sample_path: string } {
   return {
     name: path.split("/").pop() ?? "sample.png",
-    data: `data:${contentType};base64,${base64}`,
+    sample_path: path,
   };
 }
 

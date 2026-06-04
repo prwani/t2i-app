@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -106,10 +106,17 @@ async def improve_prompt(request: ImprovePromptRequest) -> ImprovePromptResponse
 
 
 @app.post("/api/generations", response_model=GenerationJobResponse)
-async def create_generation(request: GenerationRequest) -> GenerationJobResponse:
+async def create_generation(request: GenerationRequest, background_tasks: BackgroundTasks) -> GenerationJobResponse:
     job_id = uuid4().hex
-    job = GenerationJobResponse(job_id=job_id, status="running")
+    job = GenerationJobResponse(job_id=job_id, status="queued")
     GENERATION_JOBS[job_id] = job
+    background_tasks.add_task(_complete_generation_job, job_id, request)
+    return job
+
+
+async def _complete_generation_job(job_id: str, request: GenerationRequest) -> None:
+    job = GENERATION_JOBS[job_id]
+    job.status = "running"
     try:
         assets = await _run_generation(request)
         if request.evaluate:
@@ -126,7 +133,6 @@ async def create_generation(request: GenerationRequest) -> GenerationJobResponse
     except Exception as exc:
         job.status = "failed"
         job.error = str(exc)
-    return job
 
 
 @app.get("/api/generations/{job_id}", response_model=GenerationJobResponse)
@@ -336,8 +342,14 @@ def _asset_bytes_with_metadata(asset: AssetInput) -> tuple[bytes, AssetResponse 
                 if path.name.startswith(prefix) and path.is_file():
                     return path.read_bytes(), None
         raise ValueError(f"Unknown asset id: {asset.id}")
+    if asset.sample_path:
+        sample_path = (SAMPLE_ASSETS_DIR / asset.sample_path).resolve()
+        sample_root = SAMPLE_ASSETS_DIR.resolve()
+        if sample_root not in sample_path.parents or not sample_path.is_file():
+            raise ValueError(f"Unknown sample asset: {asset.sample_path}")
+        return sample_path.read_bytes(), None
     if not asset.data:
-        raise ValueError("asset data or id is required")
+        raise ValueError("asset data, id, or sample_path is required")
     data = asset.data.split(",", 1)[1] if asset.data.startswith("data:") else asset.data
     try:
         return base64.b64decode(data, validate=True), None
