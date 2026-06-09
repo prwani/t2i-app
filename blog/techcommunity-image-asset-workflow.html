@@ -87,15 +87,22 @@
       padding: 1rem;
     }
 
-    .placeholder {
-      background: #faf9f8;
-      border: 2px dashed #c8c6c4;
+    figure {
+      margin: 1.5rem 0;
+    }
+
+    figure img {
+      border: 1px solid #d2d0ce;
       border-radius: 8px;
+      display: block;
+      height: auto;
+      max-width: 100%;
+    }
+
+    figcaption {
       color: #605e5c;
-      font-style: italic;
-      margin: 1rem 0;
-      padding: 1rem;
-      text-align: center;
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
@@ -115,7 +122,7 @@
     </div>
 
     <div class="callout">
-      <strong>Disclaimers:</strong> The sample code in this article is provided &ldquo;as is&rdquo; for illustration and learning, without warranties of any kind; review and test it before any production use. The deployment names shown are examples &mdash; use the exact model names available in your Azure region. <em>[When you add screenshots or generated visuals to this post, include a one-line disclosure such as: &ldquo;Images in this post were generated with Microsoft Foundry image models.&rdquo;]</em>
+      <strong>Disclaimers:</strong> The sample code in this article is provided &ldquo;as is&rdquo; for illustration and learning, without warranties of any kind; review and test it before any production use. The deployment names shown are examples &mdash; use the exact model names available in your Azure region. Images and visual examples in this post were generated with Microsoft Foundry image models or captured from the sample app.
     </div>
 
     <h2>Why this pattern</h2>
@@ -155,10 +162,10 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       The app keeps <code>t2i_core</code> as the backend domain layer, exposes it through a FastAPI service, and uses a Next.js front end. Because the SDK owns all model-specific logic, the same core powers the web UI, developer notebooks, and agent skills &mdash; which keeps behavior consistent and makes the front end straightforward to extend with saved asset libraries, approval workflows, and design-system integration.
     </p>
 
-    <div class="placeholder">
-      Screenshot placeholder: architecture diagram showing the Next.js + FastAPI app using the same SDK as notebooks and skills.<br>
-      <strong>Alt text to add:</strong> &ldquo;Architecture diagram: a Next.js web UI and FastAPI backend, plus notebooks and agent skills, all calling a shared t2i_core SDK that connects to Microsoft Foundry, Azure OpenAI, and Azure AI Vision.&rdquo;
-    </div>
+    <figure>
+      <img src="assets/architecture.svg" alt="Architecture diagram: a Next.js web UI and FastAPI backend, plus notebooks and agent skills, all calling a shared t2i_core SDK that connects to Microsoft Foundry, Azure OpenAI, and Azure AI Vision.">
+      <figcaption><strong>Figure 1.</strong> The web UI, notebooks, and agent skills all call the same <code>t2i_core</code> SDK, which keeps provider routing, scenario logic, evaluation, thresholds, and settings consistent across local and hosted workflows.</figcaption>
+    </figure>
 
     <h2>Image generation capabilities</h2>
     <table>
@@ -308,10 +315,31 @@ Microsoft Foundry, Azure OpenAI, Azure AI Vision</code></pre>
       In the UI, creators can generate candidates, evaluate generated results, compare uploaded images against a shared prompt, or run a batch rank workflow that generates variations and orders them by score.
     </p>
 
-    <div class="placeholder">
-      Screenshot placeholder: evaluation summary table with composite scores and per-layer results.<br>
-      <strong>Alt text to add:</strong> &ldquo;Evaluation summary table showing per-layer scores (embedding, rubric, judge) and a composite score for each generated candidate.&rdquo;
-    </div>
+    <table aria-label="Evaluation summary table showing real scores for the generated mug candidate.">
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Embedding</th>
+          <th>Rubric</th>
+          <th>Judge</th>
+          <th>Composite</th>
+          <th>Decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Generated mug example</td>
+          <td>0.427</td>
+          <td>1.000</td>
+          <td>5.0 / 5</td>
+          <td>0.885</td>
+          <td>Regenerate: embedding score below minimum</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The summary above comes from the actual evaluation output saved in <code>blog/assets/rubric-mug-evaluation-summary.json</code>. It also surfaces an important production lesson: even a visually strong image can be routed to review or regeneration when one gate is not calibrated for the asset category. In this run, the rubric and judge layers strongly accepted the image, but the default embedding minimum of <code>0.50</code> was stricter than the observed <code>0.427</code> cosine similarity.
+    </p>
 
     <h3>Worked example: how the rubric layer scores one image</h3>
     <p>
@@ -329,20 +357,20 @@ depth of field, photorealistic product photography</code></pre>
       <strong>Step 2 &mdash; The decomposer turns the prompt into rubric questions.</strong> The <code>EVAL_DECOMPOSER_DEPLOYMENT</code> model breaks the prompt into independent yes/no checks. Each check targets one attribute so the score is explainable rather than a single opaque number:
     </p>
     <ul>
-      <li>Is the main subject a coffee mug?</li>
-      <li>Is the mug blue?</li>
-      <li>Is the mug made of ceramic?</li>
-      <li>Is the mug resting on a white marble counter?</li>
-      <li>Is hot steam visibly rising from the mug?</li>
-      <li>Does the lighting read as soft morning light coming from the left?</li>
-      <li>Is there a shallow depth of field (blurred background)?</li>
-      <li>Is the overall style photorealistic product photography?</li>
+      <li>Is a ceramic coffee mug visible?</li>
+      <li>Is the coffee mug blue?</li>
+      <li>Is the mug placed on a white marble counter?</li>
+      <li>Is hot steam rising from the top of the mug?</li>
+      <li>Is there soft morning light coming from the left?</li>
+      <li>Is the image rendered with a shallow depth of field?</li>
+      <li>Does the image look like photorealistic product photography?</li>
+      <li>Is there exactly one coffee mug in the image?</li>
     </ul>
 
-    <div class="placeholder">
-      Image placeholder: the generated candidate being scored &mdash; a blue ceramic mug on a marble counter, side-lit, blurred background, with no visible steam.<br>
-      <strong>Alt text to add:</strong> &ldquo;A blue ceramic coffee mug on a white marble counter, soft light from the left and a blurred background, generated by a Microsoft Foundry image model.&rdquo;
-    </div>
+    <figure>
+      <img src="assets/rubric-mug-example.png" alt="A blue ceramic coffee mug on a white marble counter with visible steam, soft light from the left, and a blurred background, generated by a Microsoft Foundry image model.">
+      <figcaption><strong>Figure 2.</strong> Generated image used for the rubric walkthrough. The file is included at <code>blog/assets/rubric-mug-example.png</code>.</figcaption>
+    </figure>
 
     <p>
       <strong>Step 3 &mdash; The rubric model grades the image against each question.</strong> The <code>EVAL_RUBRIC_DEPLOYMENT</code> model inspects the generated image and returns a verdict and a short reason for every attribute. Scoring uses yes = 1, partial = 0.5, no = 0:
@@ -359,58 +387,58 @@ depth of field, photorealistic product photography</code></pre>
       </thead>
       <tbody>
         <tr>
-          <td>Is the main subject a coffee mug?</td>
+          <td>Is a ceramic coffee mug visible?</td>
           <td>Yes</td>
           <td>1.0</td>
-          <td>A single mug is clearly the focal subject.</td>
+          <td>A ceramic coffee mug is clearly visible.</td>
         </tr>
         <tr>
-          <td>Is the mug blue?</td>
+          <td>Is the coffee mug blue?</td>
           <td>Yes</td>
           <td>1.0</td>
-          <td>The mug is a solid medium blue.</td>
+          <td>The mug is visually blue in color.</td>
         </tr>
         <tr>
-          <td>Is the mug made of ceramic?</td>
+          <td>Is the mug placed on a white marble counter?</td>
           <td>Yes</td>
           <td>1.0</td>
-          <td>Matte glazed surface consistent with ceramic.</td>
+          <td>The surface appears as white marble.</td>
         </tr>
         <tr>
-          <td>Is the mug on a white marble counter?</td>
+          <td>Is hot steam rising from the top of the mug?</td>
           <td>Yes</td>
           <td>1.0</td>
-          <td>Light surface with grey veining reads as marble.</td>
+          <td>Visible steam is rising from the mug.</td>
         </tr>
         <tr>
-          <td>Is hot steam visibly rising?</td>
-          <td>No</td>
-          <td>0.0</td>
-          <td>No steam or vapor is present above the mug.</td>
-        </tr>
-        <tr>
-          <td>Soft morning light from the left?</td>
+          <td>Is there soft morning light coming from the left?</td>
           <td>Yes</td>
           <td>1.0</td>
-          <td>Highlights and shadows indicate a soft left-side key light.</td>
+          <td>Soft light appears to come from the left side.</td>
         </tr>
         <tr>
-          <td>Shallow depth of field?</td>
-          <td>Partial</td>
-          <td>0.5</td>
-          <td>Background is softened but not strongly blurred.</td>
-        </tr>
-        <tr>
-          <td>Photorealistic product photography style?</td>
+          <td>Is the image rendered with a shallow depth of field?</td>
           <td>Yes</td>
           <td>1.0</td>
-          <td>Lighting, focus, and texture read as a real product photo.</td>
+          <td>Background is blurred, indicating a shallow depth of field.</td>
+        </tr>
+        <tr>
+          <td>Does the image look like photorealistic product photography?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>The image has photorealistic product photography qualities.</td>
+        </tr>
+        <tr>
+          <td>Is there exactly one coffee mug in the image?</td>
+          <td>Yes</td>
+          <td>1.0</td>
+          <td>Only one coffee mug is present in the frame.</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      <strong>Step 4 &mdash; Roll the verdicts into a score and a decision.</strong> Summing the verdicts gives 6.5 out of 8 attributes, for a rubric score of <strong>0.81</strong>. The judge layer separately rates visual quality and the other 1-5 dimensions, and the composite score combines the active layers. Because the one missing attribute &mdash; steam &mdash; is easy to name, the workflow can surface a precise recommendation: <em>regenerate with stronger emphasis on visible rising steam</em>, rather than a vague &ldquo;try again.&rdquo; That traceability from prompt &rarr; questions &rarr; per-attribute verdicts &rarr; score is what makes the rubric layer useful for comparing several candidates objectively.
+      <strong>Step 4 &mdash; Roll the verdicts into a score and a decision.</strong> In this run, all 8 rubric attributes were marked yes, so the rubric score is <strong>1.00</strong>. The judge layer separately rated visual quality, spatial coherence, style fidelity, aesthetic appeal, and text legibility at <strong>5 / 5</strong>, producing a composite score of <strong>0.885</strong>. The threshold decision was still <strong>regenerate</strong> because the embedding cosine similarity was <strong>0.427</strong>, below the default <code>embedding_min</code> of <code>0.50</code>. That result is exactly why calibration matters: for product-photo prompts, teams should review a sample set, tune category-specific thresholds, and decide whether embedding should be a hard gate or an early-ranking signal.
     </p>
 
     <h2>Prerequisites</h2>
@@ -475,10 +503,10 @@ EVAL_JUDGE_DEPLOYMENT=gpt-5.4</code></pre>
 npm install
 npm run dev</code></pre>
 
-    <div class="placeholder">
-      Screenshot placeholder: Asset Creation Workflow home page with model selector, scenario selector, prompt box, and generated gallery.<br>
-      <strong>Alt text to add:</strong> &ldquo;Asset Creation Workflow home page showing a model selector, scenario selector, prompt input box, and a gallery of generated images.&rdquo;
-    </div>
+    <figure>
+      <img src="assets/web-homepage.png" alt="Asset Creation Workflow home page showing content creation scenarios, evaluation utilities, API status, and the configured backend endpoint.">
+      <figcaption><strong>Figure 3.</strong> Local Next.js web experience captured from the sample app. The UI shows scenario entry points, evaluation utilities, API health status, and the configured backend endpoint.</figcaption>
+    </figure>
 
     <h2>3. Generate channel-ready assets</h2>
     <p>
@@ -763,16 +791,12 @@ az acr repository delete --name &lt;acr-name&gt; --image t2i-app:&lt;tag&gt;</co
 
     <h2>Resources</h2>
     <ul>
-      <li>Sample code: <a href="[Insert GitHub repo URL]">[Insert GitHub repo URL]</a> &mdash; published under <em>[insert license, e.g. MIT]</em>. <em>[Confirm the repo is public and OSS-cleared before linking.]</em></li>
+      <li>Sample code: <a href="https://github.com/prwani/t2i-app">github.com/prwani/t2i-app</a> &mdash; published under the MIT License.</li>
       <li>Microsoft Foundry documentation: <a href="https://learn.microsoft.com/azure/foundry/">learn.microsoft.com/azure/foundry</a></li>
       <li>Image generation with Azure OpenAI: <a href="https://learn.microsoft.com/azure/ai-services/openai/">learn.microsoft.com/azure/ai-services/openai</a></li>
       <li>Azure AI Vision multimodal embeddings: <a href="https://learn.microsoft.com/azure/ai-services/computer-vision/">learn.microsoft.com/azure/ai-services/computer-vision</a></li>
       <li>Azure Container Apps: <a href="https://learn.microsoft.com/azure/container-apps/">learn.microsoft.com/azure/container-apps</a></li>
     </ul>
-    <p>
-      <em>Verify each link resolves to the correct, current page before publishing.</em>
-    </p>
-
     <h2>Join the conversation</h2>
     <p>
       How is your team approaching automated evaluation for generated image assets &mdash; which signals (prompt adherence, visual quality, brand fit) matter most for your channels? Share your scenarios and questions in the comments below, and tell us which evaluation layer you would add next.

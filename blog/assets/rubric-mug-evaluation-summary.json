@@ -1,0 +1,107 @@
+{
+  "prompt": "A blue ceramic coffee mug on a white marble counter, hot steam rising from the top, soft morning light from the left, shallow depth of field, photorealistic product photography",
+  "image_path": "blog/assets/rubric-mug-example.png",
+  "metrics": {
+    "embedding_cosine_similarity": 0.42672776980466226,
+    "rubric_score": 1,
+    "rubric_matched_attributes": 8,
+    "rubric_total_attributes": 8,
+    "judge_average_score": 5,
+    "composite_score": 0.8853455539609324,
+    "threshold_decision": "regenerate",
+    "threshold_reasons": [
+      "embedding score below minimum"
+    ],
+    "evaluation_time_ms": 28839
+  },
+  "rubric_attributes": [
+    {
+      "category": "object",
+      "description": "A ceramic coffee mug",
+      "question": "Is a ceramic coffee mug visible?",
+      "answer": "yes",
+      "confidence": 0.98,
+      "reasoning": "A ceramic coffee mug is clearly visible."
+    },
+    {
+      "category": "color",
+      "description": "The coffee mug is blue",
+      "question": "Is the coffee mug blue?",
+      "answer": "yes",
+      "confidence": 0.98,
+      "reasoning": "The mug is visually blue in color."
+    },
+    {
+      "category": "setting",
+      "description": "The mug is on a white marble counter",
+      "question": "Is the mug placed on a white marble counter?",
+      "answer": "yes",
+      "confidence": 0.95,
+      "reasoning": "The surface appears as white marble."
+    },
+    {
+      "category": "action",
+      "description": "Hot steam rising from the top of the mug",
+      "question": "Is hot steam rising from the top of the mug?",
+      "answer": "yes",
+      "confidence": 0.97,
+      "reasoning": "Visible steam is rising from the mug."
+    },
+    {
+      "category": "lighting",
+      "description": "Soft morning light coming from the left",
+      "question": "Is there soft morning light coming from the left?",
+      "answer": "yes",
+      "confidence": 0.9,
+      "reasoning": "Soft light appears to come from the left side."
+    },
+    {
+      "category": "style",
+      "description": "Shallow depth of field",
+      "question": "Is the image rendered with a shallow depth of field?",
+      "answer": "yes",
+      "confidence": 0.92,
+      "reasoning": "Background is blurred, indicating a shallow depth of field."
+    },
+    {
+      "category": "style",
+      "description": "Photorealistic product photography",
+      "question": "Does the image look like photorealistic product photography?",
+      "answer": "yes",
+      "confidence": 0.9,
+      "reasoning": "The image has photorealistic product photography qualities."
+    },
+    {
+      "category": "count",
+      "description": "Exactly one coffee mug",
+      "question": "Is there exactly one coffee mug in the image?",
+      "answer": "yes",
+      "confidence": 0.99,
+      "reasoning": "Only one coffee mug is present in the frame."
+    }
+  ],
+  "judge": {
+    "visual_quality": {
+      "score": 5,
+      "justification": "The image is sharp, clean, and well-exposed, with realistic lighting, natural reflections on the ceramic glaze, and smooth tonal transitions. The steam is rendered convincingly and the overall finish is polished."
+    },
+    "spatial_coherence": {
+      "score": 5,
+      "justification": "The mug has consistent proportions and perspective, sits naturally on the counter, and casts a believable soft shadow. The handle attachment, rim, liquid surface, and steam placement all appear physically coherent."
+    },
+    "style_fidelity": {
+      "score": 5,
+      "justification": "The image strongly matches a photorealistic product photography style, with soft directional light, shallow depth of field, minimal background, and a clean commercial presentation."
+    },
+    "aesthetic_appeal": {
+      "score": 5,
+      "justification": "The composition is elegant and balanced, with the blue mug contrasting nicely against the white marble and pale background. The steam adds visual interest and a calm, refined mood."
+    },
+    "text_legibility": {
+      "score": 5,
+      "justification": "No text is present, so there are no legibility issues."
+    },
+    "overall_impression": "A highly convincing and attractive product-style image with excellent realism, clean composition, and strong visual polish.",
+    "average_score": 5
+  }
+}

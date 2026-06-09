@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">Shared SDK architecture for the image asset workflow</title>
+  <desc id="desc">A Next.js web UI and FastAPI backend, plus notebooks and agent skills, call a shared t2i_core SDK that connects to Microsoft Foundry, Azure OpenAI, and Azure AI Vision.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#07101d"/>
+      <stop offset="0.55" stop-color="#10192b"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#7c5cff"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.32"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8e9cb5"/>
+    </marker>
+  </defs>
+  <rect width="1400" height="820" rx="36" fill="url(#bg)"/>
+  <circle cx="220" cy="90" r="210" fill="#7c5cff" opacity="0.16"/>
+  <circle cx="1190" cy="120" r="230" fill="#22d3ee" opacity="0.10"/>
+  <text x="700" y="76" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700">Image asset workflow architecture</text>
+  <text x="700" y="118" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="21">One shared SDK keeps generation, evaluation, settings, and model routing consistent</text>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="195" width="320" height="150" rx="22" fill="#151f32" stroke="#35415a"/>
+    <text x="240" y="247" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="700">Next.js web UI</text>
+    <text x="240" y="286" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">Scenario selector, prompt input,</text>
+    <text x="240" y="314" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">generated gallery, evaluation views</text>
+
+    <rect x="80" y="475" width="320" height="150" rx="22" fill="#151f32" stroke="#35415a"/>
+    <text x="240" y="527" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="700">Notebooks + skills</text>
+    <text x="240" y="566" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">Prompt recipes, experiments,</text>
+    <text x="240" y="594" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">batch creation and evaluation</text>
+
+    <rect x="540" y="195" width="320" height="150" rx="22" fill="#151f32" stroke="#35415a"/>
+    <text x="700" y="247" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="27" font-weight="700">FastAPI backend</text>
+    <text x="700" y="286" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">REST endpoints for generation,</text>
+    <text x="700" y="314" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">evaluation and comparison</text>
+
+    <rect x="540" y="450" width="320" height="200" rx="26" fill="#101b2e" stroke="url(#accent)" stroke-width="3"/>
+    <text x="700" y="503" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="31" font-weight="800">t2i_core SDK</text>
+    <text x="700" y="548" text-anchor="middle" fill="#dce7ff" font-family="Segoe UI, Arial, sans-serif" font-size="19">providers: GPT image and MAI image</text>
+    <text x="700" y="582" text-anchor="middle" fill="#dce7ff" font-family="Segoe UI, Arial, sans-serif" font-size="19">scenarios: generation and editing workflows</text>
+    <text x="700" y="616" text-anchor="middle" fill="#dce7ff" font-family="Segoe UI, Arial, sans-serif" font-size="19">evaluation: embedding, rubric, judge</text>
+
+    <rect x="1000" y="170" width="320" height="125" rx="22" fill="#151f32" stroke="#35415a"/>
+    <text x="1160" y="221" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="700">Microsoft Foundry</text>
+    <text x="1160" y="258" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">MAI image deployments</text>
+
+    <rect x="1000" y="348" width="320" height="125" rx="22" fill="#151f32" stroke="#35415a"/>
+    <text x="1160" y="399" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="700">Azure OpenAI</text>
+    <text x="1160" y="436" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">GPT image and evaluator deployments</text>
+
+    <rect x="1000" y="526" width="320" height="125" rx="22" fill="#151f32" stroke="#35415a"/>
+    <text x="1160" y="577" text-anchor="middle" fill="#f0f4fa" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="700">Azure AI Vision</text>
+    <text x="1160" y="614" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">Multimodal embeddings</text>
+  </g>
+
+  <path d="M400 270 H520" stroke="#8e9cb5" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M700 345 V430" stroke="#8e9cb5" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M400 550 H520" stroke="#8e9cb5" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M860 520 C930 470 930 240 990 232" stroke="#8e9cb5" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M860 550 H990" stroke="#8e9cb5" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M860 585 C930 610 930 590 990 588" stroke="#8e9cb5" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+  <text x="700" y="735" text-anchor="middle" fill="#8e9cb5" font-family="Segoe UI, Arial, sans-serif" font-size="18">Deployable to Azure Container Apps with managed identity for model access</text>
+</svg>
